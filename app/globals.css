@@ -16,7 +16,7 @@
   }
 }
 
-body {
+/* body {
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(
       to bottom,
@@ -24,10 +24,31 @@ body {
       rgb(var(--background-end-rgb))
     )
     rgb(var(--background-start-rgb));
+} */
+
+.gradient-background {
+  background: linear-gradient(to bottom right, #FDF291, #FDB97A);
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+}
+
+@font-face {
+  font-family: 'DB_v4';
+  src: url('./assets/fonts/DB_v4.woff2') format('woff2'),
+       url('./assets/fonts/DB_v4.woff') format('woff');
+}
+
+@font-face {
+  font-family: 'DB_Med';
+  src: url('./assets/fonts/DB_Med_v4.woff2') format('woff2'),
+       url('./assets/fonts/DB_Med_v4.woff') format('woff');
+}
+@font-face {
+  font-family: 'UID_Deep';
+  src: url('./assets/fonts/UID_Deep.woff2') format('woff2'),
+       url('./assets/fonts/UID_Deep.woff') format('woff');
 }
