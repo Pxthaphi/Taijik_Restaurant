@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import liff from "@line/liff";
 import Loading from "./components/loading";
 import { useRouter } from "next/navigation";
-import querystring from "querystring";
 
 interface Profile {
   userId?: string;

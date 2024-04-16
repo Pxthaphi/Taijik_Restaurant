@@ -6,6 +6,7 @@ import "../assets/css/embla.css";
 import Link from "next/link";
 import { login } from "../auth/login";
 import Loading from "../components/loading";
+import Navigator from "../components/footer";
 
 const images = ["/assets/img/promotions/1.PNG", "/assets/img/promotions/2.PNG"];
 
@@ -18,6 +19,7 @@ interface Profile {
 export default function Customer() {
   const [profile, setProfile] = useState<Profile>({});
   const [loading, setLoading] = useState(true);
+  
 
   useEffect(() => {
     async function checkRole() {
@@ -109,8 +111,8 @@ export default function Customer() {
                 <input
                   type="text"
                   placeholder="ค้นหาเมนูที่คุณชอบ..."
-                  className="pl-10 w-full pr-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:border-indigo-500"
-                />
+                  className="pl-10 w-full pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:border-indigo-500"
+                  />
               </div>
               {/* <button
                   onClick={logout}
@@ -136,7 +138,7 @@ export default function Customer() {
         {/* Menu */}
         <section className="mt-8 flex justify-center gap-4 mx-6">
           <Link
-            href="/pages/product"
+            href="customer/pages/product"
             className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
           >
             <img
@@ -145,7 +147,7 @@ export default function Customer() {
             ></img>
           </Link>
           <Link
-            href="/pages/random"
+            href="customer/pages/product"
             className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
           >
             <img
@@ -158,10 +160,10 @@ export default function Customer() {
         {/* Show Product Hot */}
         <section>
           <div className="flex items-center justify-between mx-6 mt-7">
-            <div className="font-bold text-2xl">เมนูขายดี🔥</div>
+            <div className="font-DB_Med text-2xl">เมนูขายดี🔥</div>
             <Link
               href=""
-              className="inline-block bg-green-500 hover:bg-green-600 text-white text-sm font-bold py-1 px-3 rounded-2xl"
+              className="inline-block bg-green-500 hover:bg-green-600 text-white text-sm font-DB_Med py-1 px-3 rounded-2xl"
             >
               ดูทั้งหมด
             </Link>
@@ -173,9 +175,10 @@ export default function Customer() {
         </section>
       </main>
 
-      {/* <footer>
+      <footer className="mt-12 pt-12">
+        {/* Add margin-top to create space between main content and footer */}
         <Navigator profile={profile} />
-      </footer> */}
+      </footer>
     </>
   );
 }

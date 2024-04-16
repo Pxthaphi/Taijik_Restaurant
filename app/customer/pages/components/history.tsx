@@ -5,6 +5,7 @@ import { PostgrestError } from "@supabase/supabase-js";
 
 // Define the Product interface
 interface Product {
+  OrderP_ID: number;
   Product_ID: number;
   Product_Name: string;
   Product_Detail: string;
@@ -12,20 +13,18 @@ interface Product {
   Product_Image: string; // Added Product_Image field
 }
 
-export default function Product_Hot() {
+export default function History_Order() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Function to fetch products from Supabase
-  async function fetchProducts() {
+  async function fetchHistoryProducts() {
     try {
       // Fetch necessary columns including Product_Image
       const { data, error } = await supabase
         .from("products")
-        .select(
-          "Product_ID, Product_Name, Product_Detail, Product_Price, Product_Image"
-        );
+        .select("*, order_products!inner(*)")
+        .in("order_products.Product_ID", [5, 6 , 1, 3]);
 
       if (error) {
         throw error;
@@ -40,7 +39,7 @@ export default function Product_Hot() {
   }
 
   useEffect(() => {
-    fetchProducts();
+    fetchHistoryProducts();
   }, []); // Run once on component mount
 
   if (loading) {
@@ -78,7 +77,7 @@ export default function Product_Hot() {
   }
 
   return (
-    <div className="grid justify-center grid-cols-2 gap-4">
+    <div className="flex flex-row gap-4 overflow-x-auto">
       {products.map((product) => (
         <ProductCard key={product.Product_ID} product={product} />
       ))}
@@ -89,8 +88,8 @@ export default function Product_Hot() {
 // ProductCard component
 function ProductCard({ product }: { product: Product }) {
   return (
-    <div className="w-full items-center">
-      <div className="relative rounded-xl overflow-hidden shadow-lg w-full md:w-1/2 lg:w-1/2 xl:w-1/2">
+    <div className="flex-shrink-0 w-52">
+      <div className="relative rounded-xl overflow-hidden w-full md:w-1/2 lg:w-1/2 xl:w-1/2">
         {/* Star Rating */}
         <div className="absolute top-0 right-0 mt-2 mr-2">
           <span className="inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-medium text-gray-500 bg-white rounded-md">
@@ -114,11 +113,11 @@ function ProductCard({ product }: { product: Product }) {
         />
         <div className="px-3 py-2">
           <div className="font-DB_Med text-lg">{product.Product_Name}</div>
-          <div className="font-DB_Med text-xs mb-1 text-gray-500">{product.Product_Detail}</div>
+          <div className="font-DB_Med text-xs mb-1 text-gray-500">
+            {product.Product_Detail}
+          </div>
           <div className="flex justify-between pt-2">
-            <p className="text-gray-500 text-sm font-DB_Med my-0.5">
-              15 นาที
-            </p>
+            <p className="text-gray-500 text-sm font-DB_Med my-0.5">15 นาที</p>
             <p className="text-base font-DB_Med text-green-600">
               ฿{product.Product_Price}
             </p>

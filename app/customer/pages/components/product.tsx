@@ -12,7 +12,7 @@ interface Product {
   Product_Image: string; // Added Product_Image field
 }
 
-export default function Product_Hot() {
+export default function Product() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

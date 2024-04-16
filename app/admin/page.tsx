@@ -134,13 +134,49 @@ export default function Customer() {
         </section>
 
         {/* Menu */}
-        <section className="mt-8 flex justify-center gap-4 mx-6">
+        <section className="mt-8 grid justify-center grid-cols-2 gap-4 mx-6">
           <Link
             href="/pages/product"
             className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
           >
             <img
               src="/assets/img/components/สั่งอาหาร.PNG"
+              className="w-full h-full"
+            ></img>
+          </Link>
+          <Link
+            href="/pages/random"
+            className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
+          >
+            <img
+              src="/assets/img/components/สุ่มอาหาร.PNG"
+              className="w-full h-full"
+            ></img>
+          </Link>
+          <Link
+            href="/pages/random"
+            className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
+          >
+            <img
+              src="/assets/img/components/สุ่มอาหาร.PNG"
+              className="w-full h-full"
+            ></img>
+          </Link>
+          <Link
+            href="/pages/random"
+            className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
+          >
+            <img
+              src="/assets/img/components/สุ่มอาหาร.PNG"
+              className="w-full h-full"
+            ></img>
+          </Link>
+          <Link
+            href="/pages/random"
+            className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
+          >
+            <img
+              src="/assets/img/components/สุ่มอาหาร.PNG"
               className="w-full h-full"
             ></img>
           </Link>
