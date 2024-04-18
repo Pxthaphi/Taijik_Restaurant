@@ -8,7 +8,10 @@ import { GetProfile } from "../components/GetProfile";
 import Loading from "../components/loading";
 import Navigator from "../components/footer";
 
-const images = ["public/assets/img/promotions/1.PNG", "public/assets/img/promotions/2.PNG"];
+const images = [
+  "https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/promotions/1.png",
+  "https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/promotions/2.png",
+];
 
 interface Profile {
   pictureUrl?: string;
@@ -19,7 +22,6 @@ interface Profile {
 export default function Customer() {
   const [profile, setProfile] = useState<Profile>({});
   const [loading, setLoading] = useState(true);
-  
 
   useEffect(() => {
     async function checkUser() {
@@ -143,7 +145,7 @@ export default function Customer() {
           >
             <img
               className="w-full h-full"
-              src="public/assets/img/components/สั่งอาหาร.png"
+              src="https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/order.png"
               alt="สั่งอาหาร"
             />
           </Link>
@@ -152,7 +154,7 @@ export default function Customer() {
             className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
           >
             <img
-              src="public/assets/img/components/สุ่มอาหาร.png"
+              src="https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/random.pngg"
               className="w-full h-full"
               alt="สุ่มอาหาร"
             />

@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { PostgrestError } from "@supabase/supabase-js";
-import Image from "next/image";
 
 
 // Define the Product interface

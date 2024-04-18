@@ -15,7 +15,7 @@ export default function Loading() {
   return (
     <div className="flex justify-center items-center h-screen animate-fade animate-delay-400">
       <div className="flex flex-col items-center">
-        <img src="/assets/img/loading/loading.PNG" alt="Loading" className="animate-wiggle animate-infinite"></img>
+        <img src="https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/loading.png" alt="Loading" className="animate-wiggle animate-infinite"></img>
         <div className="mt-8">
           <div className="text-4xl text-white font-UID_Deep">ร้านอาหารใต้จิก</div>
         </div>
