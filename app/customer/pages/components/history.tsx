@@ -20,37 +20,23 @@ export default function History_Order() {
 
   async function fetchHistoryProducts() {
     try {
-      const { data: productsData, error: productsError } = await supabase
+      // Fetch necessary columns including Product_Image
+      const { data, error } = await supabase
         .from("products")
-        .select("*");
-  
-      if (productsError) {
-        throw productsError;
+        .select("*, order_products!inner(*)")
+        .in("order_products.Product_ID", [5])
+
+      if (error) {
+        throw error;
+      } else {
+        setProducts(data as Product[]);
       }
-  
-      const { data: orderProductsData, error: orderProductsError } = await supabase
-        .from("order_products")
-        .select("*");
-  
-      if (orderProductsError) {
-        throw orderProductsError;
-      }
-  
-      // Manually join products and order_products data based on Product_ID
-      const joinedData = productsData.map(product => ({
-        ...product,
-        orderProduct: orderProductsData.find(orderProduct => orderProduct.Product_ID === product.Product_ID)
-      }));
-  
-      setProducts(joinedData as Product[]);
     } catch (error) {
       setError((error as PostgrestError).message);
     } finally {
       setLoading(false);
     }
   }
-  
-  
 
   useEffect(() => {
     fetchHistoryProducts();

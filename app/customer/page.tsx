@@ -22,7 +22,7 @@ export default function Customer() {
   
 
   useEffect(() => {
-    async function checkRole() {
+    async function checkUser() {
       try {
         setLoading(true);
         const userProfile = await login();
@@ -36,7 +36,7 @@ export default function Customer() {
       }
     }
 
-    checkRole();
+    checkUser();
   }, []);
 
   if (loading) {

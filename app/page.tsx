@@ -19,7 +19,7 @@ export default function Profile() {
   const router = useRouter();
 
   useEffect(() => {
-    const Check_Login = async () => {
+    const checkRole = async () => {
       setLoading(true);
       try {
         const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
@@ -58,7 +58,7 @@ export default function Profile() {
     };
     
 
-    Check_Login();
+    checkRole();
   }, [router]);
 
   if (loading) {
