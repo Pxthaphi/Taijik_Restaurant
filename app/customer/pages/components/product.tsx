@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { PostgrestError } from "@supabase/supabase-js";
+import Image from "next/image";
+
 
 // Define the Product interface
 interface Product {
@@ -107,7 +109,7 @@ function ProductCard({ product }: { product: Product }) {
           </span>
         </div>
 
-        <img
+        <Image
           className="w-full h-24 object-cover"
           src={product.Product_Image} // Use Product_Image field as image source
           alt={product.Product_Name}

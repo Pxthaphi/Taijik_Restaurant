@@ -4,8 +4,6 @@ import liff from "@line/liff";
 import Loading from "./components/loading";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import Cookies from 'js-cookie';
-
 
 interface Profile {
   userId?: string;

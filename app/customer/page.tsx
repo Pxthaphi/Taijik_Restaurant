@@ -7,6 +7,7 @@ import Link from "next/link";
 import { login } from "../auth/login";
 import Loading from "../components/loading";
 import Navigator from "../components/footer";
+import Image from "next/image";
 
 const images = ["/assets/img/promotions/1.PNG", "/assets/img/promotions/2.PNG"];
 
@@ -19,7 +20,6 @@ interface Profile {
 export default function Customer() {
   const [profile, setProfile] = useState<Profile>({});
   const [loading, setLoading] = useState(true);
-  
 
   useEffect(() => {
     async function checkUser() {
@@ -50,10 +50,10 @@ export default function Customer() {
           <div className="p-4 mt-5 mx-2">
             {profile.pictureUrl && (
               <div className="flex items-center mb-4">
-                <img
+                <Image
                   className="w-20 h-20 rounded-full mr-4"
                   src={profile.pictureUrl}
-                  alt={profile.displayName}
+                  alt="Profile"
                 />
                 <div>
                   <div className="flex items-center justify-center">
@@ -112,7 +112,7 @@ export default function Customer() {
                   type="text"
                   placeholder="ค้นหาเมนูที่คุณชอบ..."
                   className="pl-10 w-full pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:border-indigo-500"
-                  />
+                />
               </div>
               {/* <button
                   onClick={logout}
@@ -141,19 +141,21 @@ export default function Customer() {
             href="customer/pages/product"
             className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
           >
-            <img
-              src="/assets/img/components/สั่งอาหาร.PNG"
+            <Image
               className="w-full h-full"
-            ></img>
+              src="/assets/img/components/สั่งอาหาร.PNG"
+              alt="สั่งอาหาร"
+            />
           </Link>
           <Link
             href="customer/pages/random"
             className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
           >
-            <img
+            <Image
               src="/assets/img/components/สุ่มอาหาร.PNG"
               className="w-full h-full"
-            ></img>
+              alt="สุ่มอาหาร"
+            />
           </Link>
         </section>
 

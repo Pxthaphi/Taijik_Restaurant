@@ -6,6 +6,8 @@ import "../assets/css/embla.css";
 import Link from "next/link";
 import { login } from "../auth/login";
 import Loading from "../components/loading";
+import Image from "next/image";
+
 
 const images = ["/assets/img/promotions/1.PNG", "/assets/img/promotions/2.PNG"];
 
@@ -48,10 +50,10 @@ export default function Customer() {
           <div className="p-4 mt-5 mx-2">
             {profile.pictureUrl && (
               <div className="flex items-center mb-4">
-                <img
+                <Image
                   className="w-20 h-20 rounded-full mr-4"
                   src={profile.pictureUrl}
-                  alt={profile.displayName}
+                  alt="Profile"
                 />
                 <div>
                   <div className="flex items-center justify-center">
@@ -139,55 +141,61 @@ export default function Customer() {
             href="/pages/product"
             className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
           >
-            <img
+            <Image
               src="/assets/img/components/สั่งอาหาร.PNG"
               className="w-full h-full"
-            ></img>
+              alt="สั่งอาหาร"
+            />
           </Link>
           <Link
             href="/pages/random"
             className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
           >
-            <img
+            <Image
               src="/assets/img/components/สุ่มอาหาร.PNG"
               className="w-full h-full"
-            ></img>
+              alt="สั่งอาหาร"
+            />
           </Link>
           <Link
             href="/pages/random"
             className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
           >
-            <img
-              src="/assets/img/components/สุ่มอาหาร.PNG"
+            <Image
+              src="/assets/img/components/สั่งอาหาร.PNG"
               className="w-full h-full"
-            ></img>
+              alt="สั่งอาหาร"
+            />
           </Link>
           <Link
             href="/pages/random"
             className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
           >
-            <img
-              src="/assets/img/components/สุ่มอาหาร.PNG"
+            <Image
+              src="/assets/img/components/สั่งอาหาร.PNG"
               className="w-full h-full"
-            ></img>
+              alt="สั่งอาหาร"
+            />
           </Link>
           <Link
             href="/pages/random"
             className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
           >
-            <img
-              src="/assets/img/components/สุ่มอาหาร.PNG"
+            <Image
+              src="/assets/img/components/สั่งอาหาร.PNG"
               className="w-full h-full"
-            ></img>
+              alt="สั่งอาหาร"
+            />
           </Link>
           <Link
             href="/pages/random"
             className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
           >
-            <img
-              src="/assets/img/components/สุ่มอาหาร.PNG"
+            <Image
+              src="/assets/img/components/สั่งอาหาร.PNG"
               className="w-full h-full"
-            ></img>
+              alt="สั่งอาหาร"
+            />
           </Link>
         </section>
       </main>
