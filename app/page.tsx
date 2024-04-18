@@ -3,6 +3,9 @@ import { useState, useEffect } from "react";
 import liff from "@line/liff";
 import Loading from "./components/loading";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import Cookies from 'js-cookie';
+
 
 interface Profile {
   userId?: string;
@@ -16,40 +19,46 @@ export default function Profile() {
   const router = useRouter();
 
   useEffect(() => {
-    const login = async () => {
+    const Check_Login = async () => {
       setLoading(true);
       try {
         const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
         if (!liffId) {
           throw new Error("LINE_LIFF_ID is not defined.");
         }
-
+    
         await liff.init({ liffId });
         if (!liff.isLoggedIn()) {
           liff.login();
         } else {
           const userProfile = await liff.getProfile();
-
-          const isAdmin =
-            userProfile.userId === process.env.NEXT_PUBLIC_ADMIN_LINE_USER_ID;
-
-          if (isAdmin) {
+    
+          const { data, error } = await supabase
+            .from("users")
+            .select("User_Type")
+            .eq("User_ID", userProfile.userId)
+            .single();
+    
+          if (error) {
+            throw error;
+          }
+    
+          if (data.User_Type === "admin") {
             router.push(`/admin`);
           } else {
             router.push(`/customer`);
           }
-          setLoading(false);
         }
       } catch (error) {
-        console.error(
-          "LIFF initialization or profile retrieval failed:",
-          error
-        );
+        console.error("LIFF initialization or profile retrieval failed:", error);
         // Handle error
+      } finally {
+        setLoading(false);
       }
     };
+    
 
-    login();
+    Check_Login();
   }, [router]);
 
   if (loading) {
