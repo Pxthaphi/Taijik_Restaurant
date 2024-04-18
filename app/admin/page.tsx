@@ -4,7 +4,7 @@ import Product_Hot from "../components/product_hot";
 import EmblaCarousel from "../components/carousel";
 import "../assets/css/embla.css";
 import Link from "next/link";
-import { login } from "../auth/login";
+import { GetProfile } from "../components/GetProfile";
 import Loading from "../components/loading";
 import Image from "next/image";
 
@@ -25,7 +25,7 @@ export default function Customer() {
     async function checkRole() {
       try {
         setLoading(true);
-        const userProfile = await login();
+        const userProfile = await GetProfile();
         if (userProfile !== null) {
           setProfile(userProfile);
         }

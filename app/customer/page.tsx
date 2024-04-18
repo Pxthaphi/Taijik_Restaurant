@@ -4,12 +4,11 @@ import Product_Hot from "../components/product_hot";
 import EmblaCarousel from "../components/carousel";
 import "../assets/css/embla.css";
 import Link from "next/link";
-import { login } from "../auth/login";
+import { GetProfile } from "../components/GetProfile";
 import Loading from "../components/loading";
 import Navigator from "../components/footer";
-import Image from "next/image";
 
-const images = ["/assets/img/promotions/1.PNG", "/assets/img/promotions/2.PNG"];
+const images = ["public/assets/img/promotions/1.PNG", "public/assets/img/promotions/2.PNG"];
 
 interface Profile {
   pictureUrl?: string;
@@ -20,12 +19,13 @@ interface Profile {
 export default function Customer() {
   const [profile, setProfile] = useState<Profile>({});
   const [loading, setLoading] = useState(true);
+  
 
   useEffect(() => {
     async function checkUser() {
       try {
         setLoading(true);
-        const userProfile = await login();
+        const userProfile = await GetProfile();
         if (userProfile !== null) {
           setProfile(userProfile);
         }
@@ -50,7 +50,7 @@ export default function Customer() {
           <div className="p-4 mt-5 mx-2">
             {profile.pictureUrl && (
               <div className="flex items-center mb-4">
-                <Image
+                <img
                   className="w-20 h-20 rounded-full mr-4"
                   src={profile.pictureUrl}
                   alt="Profile"
@@ -141,9 +141,9 @@ export default function Customer() {
             href="customer/pages/product"
             className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
           >
-            <Image
+            <img
               className="w-full h-full"
-              src="/assets/img/components/สั่งอาหาร.PNG"
+              src="public/assets/img/components/สั่งอาหาร.png"
               alt="สั่งอาหาร"
             />
           </Link>
@@ -151,8 +151,8 @@ export default function Customer() {
             href="customer/pages/random"
             className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
           >
-            <Image
-              src="/assets/img/components/สุ่มอาหาร.PNG"
+            <img
+              src="public/assets/img/components/สุ่มอาหาร.png"
               className="w-full h-full"
               alt="สุ่มอาหาร"
             />

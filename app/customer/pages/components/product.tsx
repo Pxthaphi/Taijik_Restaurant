@@ -109,7 +109,7 @@ function ProductCard({ product }: { product: Product }) {
           </span>
         </div>
 
-        <Image
+        <img
           className="w-full h-24 object-cover"
           src={product.Product_Image} // Use Product_Image field as image source
           alt={product.Product_Name}
