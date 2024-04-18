@@ -154,7 +154,7 @@ export default function Customer() {
             className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
           >
             <img
-              src="https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/random.pngg"
+              src="https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/random.png"
               className="w-full h-full"
               alt="สุ่มอาหาร"
             />
