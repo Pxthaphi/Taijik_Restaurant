@@ -1,15 +1,21 @@
+import React from 'react';
 import { EmblaOptionsType } from 'embla-carousel';
 import Autoplay from 'embla-carousel-autoplay';
 import useEmblaCarousel from 'embla-carousel-react';
 
 type PropType = {
-  images: string[];
   options?: EmblaOptionsType;
 }
 
 const EmblaCarousel: React.FC<PropType> = (props) => {
-  const { images, options } = props;
+  const { options } = props;
   const [emblaRef, emblaApi] = useEmblaCarousel(options, [Autoplay()]);
+
+  // รูปภาพที่ต้องการแสดงใน carousel
+  const images = [
+  "https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/promotions/1.png",
+  "https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/promotions/2.png",
+];
 
   return (
     <section className="embla">
