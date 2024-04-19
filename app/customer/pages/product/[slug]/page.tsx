@@ -1,5 +1,5 @@
 "use client";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/router";
 import { useEffect, useState, Fragment } from "react";
 import { supabase } from "@/lib/supabase";
 import { PostgrestError } from "@supabase/supabase-js";
@@ -19,7 +19,7 @@ interface Product {
   Product_Image: string; // Added Product_Image field
 }
 
-export default function page({ params }: PageProps) {
+export default function Product_Detail({ params }: PageProps) {
   const router = useRouter();
   const [isAnimation, setIsAnimation] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
