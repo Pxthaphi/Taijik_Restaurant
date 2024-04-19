@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { PostgrestError } from "@supabase/supabase-js";
+import Link from "next/link";
 
 // Define the Product interface
 interface Product {
@@ -91,39 +92,43 @@ function ProductCard({ product }: { product: Product }) {
   return (
     <div className="w-full items-center">
       <div className="relative rounded-xl overflow-hidden shadow-lg w-full md:w-1/2 lg:w-1/2 xl:w-1/2">
-        {/* Star Rating */}
-        <div className="absolute top-0 right-0 mt-2 mr-2">
-          <span className="inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-medium text-gray-500 bg-white rounded-md">
-            <svg
-              className="w-3 h-3 text-yellow-300"
-              aria-hidden="true"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="currentColor"
-              viewBox="0 0 22 20"
-            >
-              <path d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z" />
-            </svg>
-            <p className="text-xs font-DB_Med ms-1 text-yellow-500">5.0</p>
-          </span>
-        </div>
-
-        <img
-          className="w-full h-24 object-cover"
-          src={product.Product_Image} // Use Product_Image field as image source
-          alt={product.Product_Name}
-        />
-        <div className="px-3 py-2">
-          <div className="font-DB_Med text-lg">{product.Product_Name}</div>
-          <div className="font-DB_Med text-xs mb-1 text-gray-500">{product.Product_Detail}</div>
-          <div className="flex justify-between pt-2">
-            <p className="text-gray-500 text-sm font-DB_Med my-0.5">
-              15 นาที
-            </p>
-            <p className="text-base font-DB_Med text-green-600">
-              ฿{product.Product_Price}
-            </p>
+        <Link href={`/customer/pages/product/${product.Product_ID}`}>
+          {/* Star Rating */}
+          <div className="absolute top-0 right-0 mt-2 mr-2">
+            <span className="inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-medium text-gray-500 bg-white rounded-md">
+              <svg
+                className="w-3 h-3 text-yellow-300"
+                aria-hidden="true"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="currentColor"
+                viewBox="0 0 22 20"
+              >
+                <path d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z" />
+              </svg>
+              <p className="text-xs font-DB_Med ms-1 text-yellow-500">5.0</p>
+            </span>
           </div>
-        </div>
+
+          <img
+            className="w-full h-24 object-cover"
+            src={product.Product_Image} // Use Product_Image field as image source
+            alt={product.Product_Name}
+          />
+          <div className="px-3 py-2">
+            <div className="font-DB_Med text-lg">{product.Product_Name}</div>
+            <div className="font-DB_Med text-xs mb-1 text-gray-500">
+              {product.Product_Detail}
+            </div>
+            <div className="flex justify-between pt-2">
+              <p className="text-gray-500 text-sm font-DB_Med my-0.5">
+                15 นาที
+              </p>
+              <p className="text-base font-DB_Med text-green-600">
+                ฿{product.Product_Price}
+              </p>
+            </div>
+          </div>
+        </Link>
       </div>
     </div>
   );

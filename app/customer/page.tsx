@@ -159,7 +159,7 @@ export default function Customer() {
         {/* Show Product Hot */}
         <section>
           <div className="flex items-center justify-between mx-6 mt-7">
-            <div className="font-DB_Med text-2xl">เมนูขายดี🔥</div>
+            <div className="font-DB_Med text-2xl animate-wiggle animate-duration-[1000ms] animate-infinite animate-ease-in-out">เมนูขายดี🔥</div>
             <Link
               href=""
               className="inline-block bg-green-500 hover:bg-green-600 text-white text-sm font-DB_Med py-1 px-3 rounded-2xl"
