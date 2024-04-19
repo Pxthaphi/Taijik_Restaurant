@@ -6,11 +6,6 @@ import Link from "next/link";
 import { GetProfile } from "../components/GetProfile";
 import Loading from "../components/loading";
 
-const images = [
-  "https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/promotions/1.png",
-  "https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/promotions/2.png",
-];
-
 interface Profile {
   pictureUrl?: string;
   displayName?: string;
@@ -130,7 +125,7 @@ export default function Customer() {
         <section className="mt-8 flex justify-center mx-6">
           <div className="max-w-sm">
             <div className="bg-white shadow-md rounded-2xl overflow-hidden">
-              <EmblaCarousel images={images} />
+              <EmblaCarousel />
             </div>
           </div>
         </section>
