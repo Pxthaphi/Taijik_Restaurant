@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import Product_Hot from "../components/product_hot";
 import EmblaCarousel from "../components/carousel";
-import "../assets/css/embla.css";
 import Link from "next/link";
 import { GetProfile } from "../components/GetProfile";
 import Loading from "../components/loading";
@@ -53,7 +52,7 @@ export default function Customer() {
                   alt="Profile"
                 />
                 <div>
-                  <div className="flex items-center justify-center">
+                  <div className="flex items-center justify-between">
                     <div className="pt-1">
                       <div className="text-lg font-DB_Med">
                         สวัสดีคุณ {profile.displayName} 👋🏻
@@ -62,8 +61,8 @@ export default function Customer() {
                         วันนี้จะรับประทานอะไรดีคะ?
                       </div>
                     </div>
-                    <div className="ms-8">
-                      <button className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-100 focus:outline-none">
+                    <div className="ms-12">
+                      <button className="flex items-center justify-center px-4 py-3 bg-gray-100 rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-100">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           fill="none"

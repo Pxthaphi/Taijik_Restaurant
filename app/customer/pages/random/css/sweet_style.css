@@ -1,0 +1,14 @@
+.swal2-confirm,
+.swal2-deny {
+  border-radius: 20px !important;
+  margin: 20px;
+}
+
+.swal2-confirm {
+  background-color: #50a837 !important; /* Change to green */
+  border: 0px !important; /* Remove border */
+}
+
+.swal2-title{
+  font-family: 'DB_v4';
+}
