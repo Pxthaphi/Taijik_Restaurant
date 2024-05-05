@@ -4,8 +4,13 @@ import Link from "next/link";
 import History_Order from "../components/history";
 import Product_Type from "../components/product_type";
 import { useRouter } from "next/navigation";
+import { getUserID } from "@/app/auth/getUserID";
 
 export default function Show_Product() {
+
+  const userID = getUserID();
+  console.log("UserID (Product page) : ", userID)
+
   const router = useRouter();
 
   const goBack = () => {
@@ -73,7 +78,7 @@ export default function Show_Product() {
       </section>
 
       {/* ประเภทอาหาร */}
-      <section>
+      <section className="animate-fade-up animate-duration-[1000ms]">
         <div className="flex items-center justify-between mx-6 mt-7">
           <div className="font-DB_Med text-xl">ประเภทเมนูอาหาร</div>
           <Link
@@ -89,7 +94,7 @@ export default function Show_Product() {
       </section>
 
       {/* รายการอาหารที่เคยซื้อ */}
-      <section>
+      <section className="animate-fade-up animate-duration-[1000ms]">
         <div className="flex items-center justify-between mx-6 mt-7">
           <div className="font-DB_Med text-xl">สั่งอีกครั้ง</div>
           <Link
@@ -105,12 +110,12 @@ export default function Show_Product() {
       </section>
 
       {/* รายการอาหาร */}
-      <section>
+      <section className="animate-fade-up animate-duration-[1000ms]">
         <div className="flex items-center justify-between mx-6 mt-7">
           <div className="font-DB_Med text-xl">เมนูอาหาร</div>
         </div>
 
-        <div className="mx-6 mt-6">
+        <div className="mx-6 mt-6 my-9">
           <Product />
         </div>
       </section>

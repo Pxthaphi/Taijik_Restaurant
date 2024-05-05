@@ -42,7 +42,7 @@ export default function Customer() {
   return (
     <>
       <header className="flex justify-center items-center">
-        <div className="max-w-md w-full shadow-md pt- rounded-b-3xl overflow-hidden gradient-background">
+        <div className="max-w-md w-full shadow-md rounded-b-3xl overflow-hidden gradient-background">
           <div className="p-4 mt-5 mx-2">
             {profile.pictureUrl && (
               <div className="flex items-center mb-4">
@@ -121,7 +121,7 @@ export default function Customer() {
         </div>
       </header>
 
-      <main className="">
+      <main className="animate-fade-up animate-duration-[1000ms]">
         {/* Promotions  */}
         <section className="mt-8 flex justify-center mx-6">
           <div className="max-w-sm">
@@ -160,7 +160,7 @@ export default function Customer() {
           <div className="flex items-center justify-between mx-6 mt-7">
             <div className="font-DB_Med text-2xl animate-wiggle animate-duration-[1000ms] animate-infinite animate-ease-in-out">เมนูขายดี🔥</div>
             <Link
-              href=""
+              href="customer/pages/product"
               className="inline-block bg-green-500 hover:bg-green-600 text-white text-sm font-DB_Med py-1 px-3 rounded-2xl"
             >
               ดูทั้งหมด

@@ -3,10 +3,14 @@ import Swal from "sweetalert2";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import "./css/sweet_style.css";
+import { getUserID } from "@/app/auth/getUserID";
 
 export default function Random_Food() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+
+  const userID = getUserID();
+  console.log("UserID (Random page) : ", userID)
 
   const goBack = () => {
     router.back();
@@ -100,7 +104,7 @@ export default function Random_Food() {
         <div className="font-DB_Med text-2xl pt-0.5">สุ่มเมนูอาหาร</div>
       </header>
 
-      <section className="flex justify-center mt-12 pt-10 animate-fade-up animate-duration-[1500ms]">
+      <section className="flex justify-center mt-12 pt-10 animate-fade-up animate-duration-[1000ms]">
         <div className="w-full max-w-sm p-4 bg-white rounded-lg shadow-lg sm:p-6">
           <div className="flex justify-center my-5 ">
             <div className="me-2 h-8 bg-gray-100 p-0.5 rounded-lg flex items-center justify-center">

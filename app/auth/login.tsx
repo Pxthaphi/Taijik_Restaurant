@@ -1,5 +1,7 @@
 import liff from "@line/liff";
 import { supabase } from "@/lib/supabase";
+import Cookies from "js-cookie";
+
 
 export async function login() {
   try {
@@ -16,6 +18,8 @@ export async function login() {
         const User_ID = userProfile.userId;
         const User_Name = userProfile.displayName;
         const User_Type = "customer"; // Assuming default user type is "customer"
+
+        Cookies.set("UserID", User_ID);
 
         // Check if the user already exists in the database
         const { data: existingUser, error: userError } = await supabase

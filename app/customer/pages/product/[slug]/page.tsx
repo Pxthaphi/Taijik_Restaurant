@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, Fragment } from "react";
 import { supabase } from "@/lib/supabase";
 import { PostgrestError } from "@supabase/supabase-js";
+import Link from "next/link";
 
 interface PageProps {
   params: {
@@ -25,6 +26,35 @@ export default function Product_Detail({ params }: PageProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [quantity, setQuantity] = useState(1);
+  // Define state to hold the total price
+  const [totalPrice, setTotalPrice] = useState<number>(0);
+
+  // Function to calculate total price
+  const calculateTotalPrice = (price: number) => {
+    return price * quantity;
+  };
+
+  // Update total price whenever the quantity changes
+  useEffect(() => {
+    if (products.length > 0) {
+      const pricePerItem = products[0].Product_Price;
+      const newTotalPrice = calculateTotalPrice(pricePerItem);
+      setTotalPrice(newTotalPrice);
+    }
+  }, [quantity, products]);
+
+  const incrementQuantity = () => {
+    if (quantity < 99) {
+      setQuantity(quantity + 1);
+    }
+  };
+
+  const decrementQuantity = () => {
+    if (quantity > 1) {
+      setQuantity(quantity - 1);
+    }
+  };
 
   const handleAnimationClick = () => {
     setIsAnimation(!isAnimation);
@@ -65,7 +95,11 @@ export default function Product_Detail({ params }: PageProps) {
 
   if (loading) {
     return (
-      <div className={`flex justify-center items-center h-screen ${loading ? 'bg-green-600' : 'bg-white'}`}>
+      <div
+        className={`flex justify-center items-center h-screen ${
+          loading ? "bg-green-600" : "bg-white"
+        }`}
+      >
         <div className="flex flex-col items-center">
           <img
             src="https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/loading.png"
@@ -265,56 +299,39 @@ export default function Product_Detail({ params }: PageProps) {
 
       <section>
         <div className="mx-8 mt-8">
-          <div className="font-DB_Med text-xl">กรุณาเลือก</div>
-          <div className="pt-5">
-            <div className="flex items-center justify-between pt-5">
+          <div className="font-DB_Med text-xl">ขนาด</div>
+          <div className="pt-2">
+            <div className="flex items-center justify-between pt-2">
               <div className="flex items-center">
                 <input
-                  id="green-radio"
+                  id="size_radio"
                   type="radio"
-                  value=""
-                  name="colored-radio"
-                  className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 focus:ring-green-500"
+                  value="ธรรมดา"
+                  name="size_radio"
+                  className="w-4 h-4 accent-green-500"
                 />
                 <label className="ms-3 font-DB_v4 text-base text-gray-900">
-                  ไก่
+                  ธรรมดา
                 </label>
               </div>
-              <div className="text-right text-base font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
-                ฿5
+              <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
+                ฿0
               </div>
             </div>
-            <div className="flex items-center justify-between pt-5">
+            <div className="flex items-center justify-between pt-2">
               <div className="flex items-center">
                 <input
-                  id="green-radio"
+                  id="size_radio"
                   type="radio"
-                  value=""
-                  name="colored-radio"
-                  className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 focus:ring-green-500"
+                  value="พิเศษ"
+                  name="size_radio"
+                  className="w-4 h-4 accent-green-500"
                 />
                 <label className="ms-3 font-DB_v4 text-base text-gray-900">
-                  หมู
+                  พิเศษ
                 </label>
               </div>
-              <div className="text-right text-base font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
-                ฿5
-              </div>
-            </div>
-            <div className="flex items-center justify-between pt-5">
-              <div className="flex items-center">
-                <input
-                  id="green-radio"
-                  type="radio"
-                  value=""
-                  name="colored-radio"
-                  className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 focus:ring-green-500"
-                />
-                <label className="ms-3 font-DB_v4 text-base text-gray-900">
-                  ทะเล
-                </label>
-              </div>
-              <div className="text-right text-base font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
+              <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
                 ฿10
               </div>
             </div>
@@ -322,8 +339,187 @@ export default function Product_Detail({ params }: PageProps) {
         </div>
       </section>
 
-      <footer className="fixed bottom-4 left-0 right-0 flex justify-center mt-12 pt-12">
-        <div className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white rounded-3xl py-3 px-6 text-lg">
+      <section>
+        <div className="mx-8 mt-8">
+          <div className="font-DB_Med text-xl">เลือกเนื้อสัตว์</div>
+          <div className="pt-2">
+            <div className="flex items-center justify-between pt-2">
+              <div className="flex items-center">
+                <input
+                  id="meat_type"
+                  type="radio"
+                  value="ไก่"
+                  name="meat_type"
+                  className="w-4 h-4 accent-green-500"
+                />
+                <label className="ms-3 font-DB_v4 text-base text-gray-900">
+                  ไก่
+                </label>
+              </div>
+              <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
+                ฿0
+              </div>
+            </div>
+            <div className="flex items-center justify-between pt-2">
+              <div className="flex items-center">
+                <input
+                  id="meat_type"
+                  type="radio"
+                  value="หมู"
+                  name="meat_type"
+                  className="w-4 h-4 accent-green-500"
+                />
+                <label className="ms-3 font-DB_v4 text-base text-gray-900">
+                  หมู
+                </label>
+              </div>
+              <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
+                ฿0
+              </div>
+            </div>
+            <div className="flex items-center justify-between pt-2">
+              <div className="flex items-center">
+                <input
+                  id="meat_type"
+                  type="radio"
+                  value="ทะเล"
+                  name="meat_type"
+                  className="w-4 h-4 accent-green-500"
+                />
+                <label className="ms-3 font-DB_v4 text-base text-gray-900">
+                  ทะเล
+                </label>
+              </div>
+              <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
+                ฿10
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div className="mx-8 mt-8">
+          <div className="font-DB_Med text-xl">เพิ่มเติม</div>
+          <div className="pt-2">
+            <div className="flex items-center justify-between pt-2">
+              <div className="flex items-center">
+                <input
+                  id="option_add"
+                  type="radio"
+                  value="ไข่ดาว"
+                  name="option_add"
+                  className="w-4 h-4 accent-green-500"
+                />
+                <label className="ms-3 font-DB_v4 text-base text-gray-900">
+                  ไข่ดาว
+                </label>
+              </div>
+              <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
+                ฿5
+              </div>
+            </div>
+            <div className="flex items-center justify-between pt-2">
+              <div className="flex items-center">
+                <input
+                  id="option_add"
+                  type="radio"
+                  value="ไข่เจียว"
+                  name="option_add"
+                  className="w-4 h-4 accent-green-500"
+                />
+                <label className="ms-3 font-DB_v4 text-base text-gray-900">
+                  ไข่เจียว
+                </label>
+              </div>
+              <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
+                ฿5
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-7 pb-12">
+        <div className="max-w-sm mx-8">
+          <div className="text-lg font-DB_Med">รายละเอียดเพิ่มเติม</div>
+          <textarea
+            id="textarea-label"
+            className="mt-5 py-4 px-4 block w-full border border-gray-300 bg-gray-50 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none"
+            placeholder="เช่น ไม่เอาผัก"
+          />
+        </div>
+      </section>
+
+      <div className="m-12"></div>
+
+      <footer className="fixed bottom-4 left-0 right-0 flex justify-center mt-12 ">
+        <div className="me-5 pt-1">
+          {/* Input Number */}
+          <div
+            className="py-2.5 px-3 inline-block bg-white border border-gray-200 rounded-xl"
+            data-hs-input-number=""
+          >
+            <div className="flex items-center gap-x-2.5">
+              <button
+                type="button"
+                onClick={decrementQuantity}
+                className="size-6 inline-flex justify-center items-center gap-x-2 text-sm font-medium rounded-md border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none"
+                data-hs-input-number-decrement=""
+              >
+                <svg
+                  className="flex-shrink-0 size-3.5"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M5 12h14"></path>
+                </svg>
+              </button>
+              <input
+                className="p-0 w-6 bg-transparent border-0 text-gray-800 text-center focus:ring-0"
+                type="text"
+                value={quantity}
+                readOnly
+                data-hs-input-number-input=""
+              />
+              <button
+                type="button"
+                onClick={incrementQuantity}
+                className="size-6 inline-flex justify-center items-center gap-x-2 text-sm font-medium rounded-md border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none "
+                data-hs-input-number-increment=""
+              >
+                <svg
+                  className="flex-shrink-0 size-3.5"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M5 12h14"></path>
+                  <path d="M12 5v14"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+          {/* End Input Number */}
+        </div>
+
+        <Link
+          href="order_product"
+          className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white rounded-3xl py-3 px-10 text-lg font-DB_Med"
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
@@ -332,9 +528,8 @@ export default function Product_Detail({ params }: PageProps) {
           >
             <path d="M2.25 2.25a.75.75 0 0 0 0 1.5h1.386c.17 0 .318.114.362.278l2.558 9.592a3.752 3.752 0 0 0-2.806 3.63c0 .414.336.75.75.75h15.75a.75.75 0 0 0 0-1.5H5.378A2.25 2.25 0 0 1 7.5 15h11.218a.75.75 0 0 0 .674-.421 60.358 60.358 0 0 0 2.96-7.228.75.75 0 0 0-.525-.965A60.864 60.864 0 0 0 5.68 4.509l-.232-.867A1.875 1.875 0 0 0 3.636 2.25H2.25ZM3.75 20.25a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0ZM16.5 20.25a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0Z" />
           </svg>
-
-          <div className="font-DB_Med">เพิ่มลงตะกร้า</div>
-        </div>
+          เพิ่มลงตะกร้า ฿{totalPrice}
+        </Link>
       </footer>
     </>
   );
