@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
 
-export default function order() {
+export default function Order_Product() {
   const router = useRouter();
   const [quantity, setQuantity] = useState(1);
 
@@ -19,14 +19,10 @@ export default function order() {
     }
   };
 
-  const checkQuantity = () => {
-    if (quantity == 0) {
-    }
-  };
-
   const goBack = () => {
     router.back();
   };
+
   return (
     <>
       <main>
