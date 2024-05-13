@@ -287,7 +287,7 @@ export default function Order_Status({ params }: PageProps) {
 
         {(status_order > 4 || status_order === 0) && (
           <Link
-            href="order_product/order_status"
+            href="../../product"
             className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white rounded-full py-3 px-12 text-lg font-DB_Med"
           >
             <svg
