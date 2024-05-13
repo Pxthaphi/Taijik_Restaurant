@@ -1,11 +1,26 @@
-'use client'
+"use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
+import dayjs from "dayjs";
+import PickerWithButtonField from "./components/timepicker";
 
 export default function Order_Product() {
   const router = useRouter();
   const [quantity, setQuantity] = useState(1);
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [selectedTimeDisplay, setSelectedTimeDisplay] = useState<string>("");
+
+  let Order_ID = "TK-0000-11111";
+
+  const handleCloseTimePicker = () => {
+    // ปิด mobiletimepicker และทำอย่างอื่นที่คุณต้องการ เช่น นำค่าเวลาที่เลือกไปใช้งานต่อ
+    console.log("time to select : ", selectedTimeDisplay);
+  };
+
+  const handleOptionSelect = (option: string) => {
+    setSelectedOption(option);
+  };
 
   const incrementQuantity = () => {
     if (quantity < 99) {
@@ -47,35 +62,49 @@ export default function Order_Product() {
         </header>
 
         <section className="flex justify-center items-center pt-2 mt-5">
-          <div className="space-x-6">
-            <label className="inline-flex items-center">
-              <input
-                type="radio"
-                className="hidden"
-                name="option"
-                value="option1"
-              />
-              <button
-                type="button"
-                className="bg-gray-200 hover:bg-gray-300 rounded-full px-8 py-2.5 flex items-center focus:outline-none"
-              >
-                <p className="text-sm font-DB_v4">กินที่ร้าน</p>
-              </button>
-            </label>
-            <label className="inline-flex items-center">
-              <input
-                type="radio"
-                className="hidden"
-                name="option"
-                value="option2"
-              />
-              <button
-                type="button"
-                className="bg-gray-200 hover:bg-gray-300 rounded-full px-6 py-2.5 flex items-center focus:outline-none"
-              >
-                <p className="text-sm font-DB_v4">ใส่กล่องกลับบ้าน</p>
-              </button>
-            </label>
+          <div className="flex">
+            <div className="flex bg-gray-100 hover:bg-gray-200 rounded-lg transition p-1">
+              <nav className="flex space-x-1" aria-label="Tabs" role="tablist">
+                <button
+                  type="button"
+                  className={`hs-tab-active:bg-white hs-tab-active:text-gray-700 py-3 px-4 inline-flex items-center gap-x-2 bg-transparent text-sm font-medium rounded-lg hover:text-gray-700 hover:hover:text-blue-600 disabled:opacity-50 disabled:pointer-events-none ${
+                    selectedOption === "options1" ? "active" : ""
+                  }`}
+                  id="segment-item-1"
+                  data-hs-tab="#segment-1"
+                  aria-controls="segment-1"
+                  role="tab"
+                  onClick={() => handleOptionSelect("options1")}
+                >
+                  <p className="text-base font-DB_v4">กินที่ร้าน</p>
+                  {selectedOption === "options1" && selectedTimeDisplay && (
+                    <p className="text-base font-DB_v4 text-orange-500">
+                      ({selectedTimeDisplay})
+                    </p>
+                  )}
+                  {selectedOption === "options1" && <PickerWithButtonField />}
+                </button>
+                <button
+                  type="button"
+                  className={`hs-tab-active:bg-white hs-tab-active:text-gray-700 py-3 px-4 inline-flex items-center gap-x-2 bg-transparent text-sm font-medium rounded-lg hover:text-gray-700 hover:hover:text-blue-600 disabled:opacity-50 disabled:pointer-events-none ${
+                    selectedOption === "options2" ? "active" : ""
+                  }`}
+                  id="segment-item-2"
+                  data-hs-tab="#segment-2"
+                  aria-controls="segment-2"
+                  role="tab"
+                  onClick={() => handleOptionSelect("options2")}
+                >
+                  <p className="text-base font-DB_v4">ใส่กล่องกลับบ้าน</p>
+                  {selectedOption === "options2" && selectedTimeDisplay && (
+                    <p className="text-base font-DB_v4 text-orange-500">
+                      ({selectedTimeDisplay})
+                    </p>
+                  )}
+                  {selectedOption === "options2" && <PickerWithButtonField />}
+                </button>
+              </nav>
+            </div>
           </div>
         </section>
 
@@ -94,7 +123,9 @@ export default function Order_Product() {
                   ข้าวกะเพราไก่
                 </h3>
 
-                <p className="text-sm text-gray-500 font-DB_v4">เนื้อสัตว์ หมู , เพิ่ม ไข่ดาว</p>
+                <p className="text-sm text-gray-500 font-DB_v4">
+                  เนื้อสัตว์ หมู , เพิ่ม ไข่ดาว
+                </p>
 
                 <div className="flex justify-between mt-4 gap-x-6">
                   <h3 className="text-lg font-DB_Med text-green-600 pt-2">
@@ -165,9 +196,6 @@ export default function Order_Product() {
               </div>
             </div>
           </div>
-
-          {/* <hr className="ms-2 h-px my-2 bg-gray-100 border-0"></hr> */}
-
         </section>
 
         <hr className="mx-8 h-px my-2 bg-gray-100 border-0 pt-1 rounded-full mt-5"></hr>
@@ -236,9 +264,9 @@ export default function Order_Product() {
         </section>
       </main>
 
-      <footer className="fixed bottom-4 left-0 right-0 flex justify-center mt-12">
+      <footer className="flex justify-center fixed bottom-0 inset-x-0 mb-8 mt-12">
         <Link
-          href="order_product/order_status"
+          href={`order_product/${Order_ID}`}
           className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white rounded-full py-3 px-12 text-lg font-DB_Med"
         >
           <svg

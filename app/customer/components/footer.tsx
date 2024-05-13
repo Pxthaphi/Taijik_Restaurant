@@ -1,19 +1,21 @@
 import React from "react";
+import Link from "next/link";
 
 interface Profile {
-    pictureUrl?: string;
-    displayName?: string;
+  pictureUrl?: string;
+  displayName?: string;
 }
 
 interface NavigatorProps {
-    profile: Profile;
+  profile: Profile;
 }
 
 const Navigator: React.FC<NavigatorProps> = ({ profile }) => {
   return (
     <div className="fixed z-50 w-full h-16 max-w-lg -translate-x-1/2 bg-white border border-gray-200 rounded-full bottom-4 left-1/2">
       <div className="grid h-full max-w-lg grid-cols-5 mx-auto">
-        <button
+        <Link
+          href="customer"
           data-tooltip-target="tooltip-home"
           type="button"
           className="inline-flex flex-col items-center justify-center px-5 rounded-s-full hover:bg-gray-50 dark:hover:bg-white-900 group"
@@ -29,7 +31,7 @@ const Navigator: React.FC<NavigatorProps> = ({ profile }) => {
           </svg>
           {/* <span className="sr-only">Home</span> */}
           {/* <div className="text-xs pt-1">หน้าแรก</div> */}
-        </button>
+        </Link>
         <div
           id="tooltip-home"
           role="tooltip"
@@ -38,7 +40,8 @@ const Navigator: React.FC<NavigatorProps> = ({ profile }) => {
           Home
           <div className="tooltip-arrow" data-popper-arrow></div>
         </div>
-        <button
+        <Link
+          href="customer/pages/history"
           data-tooltip-target="tooltip-wallet"
           type="button"
           className="inline-flex flex-col items-center justify-center px-5 hover:bg-gray-50 dark:hover:bg-white-900 group"
@@ -58,7 +61,7 @@ const Navigator: React.FC<NavigatorProps> = ({ profile }) => {
           </svg>
           {/* <span className="sr-only">Wallet</span> */}
           {/* <div className="text-xs pt-1">คำสั่งซื้อ</div> */}
-        </button>
+        </Link>
         <div
           id="tooltip-wallet"
           role="tooltip"
@@ -68,7 +71,8 @@ const Navigator: React.FC<NavigatorProps> = ({ profile }) => {
           <div className="tooltip-arrow" data-popper-arrow></div>
         </div>
         <div className="flex items-center justify-center">
-          <button
+          <Link
+            href="customer/pages/product"
             data-tooltip-target="tooltip-new"
             type="button"
             className="inline-flex items-center justify-center w-10 h-10 font-medium bg-green-600 rounded-full hover:bg-green-700 group focus:ring-4 focus:ring-green-300 focus:outline-none dark:focus:ring-green-800"
@@ -87,7 +91,7 @@ const Navigator: React.FC<NavigatorProps> = ({ profile }) => {
             </svg>
 
             <span className="sr-only">New item</span>
-          </button>
+          </Link>
         </div>
         <div
           id="tooltip-new"
@@ -97,7 +101,8 @@ const Navigator: React.FC<NavigatorProps> = ({ profile }) => {
           Create new item
           <div className="tooltip-arrow" data-popper-arrow></div>
         </div>
-        <button
+        <Link
+          href="customer/pages/favorite"
           data-tooltip-target="tooltip-settings"
           type="button"
           className="inline-flex flex-col items-center justify-center px-5 hover:bg-gray-50 dark:hover:bg-white-900 group"
@@ -114,7 +119,7 @@ const Navigator: React.FC<NavigatorProps> = ({ profile }) => {
           {/* <div className="text-xs">ถูกใจ</div> */}
 
           {/* <span className="sr-only">Settings</span> */}
-        </button>
+        </Link>
         <div
           id="tooltip-settings"
           role="tooltip"

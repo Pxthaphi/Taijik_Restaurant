@@ -1,4 +1,4 @@
-"use client";
+'use client'
 import { useRouter } from "next/navigation";
 import { useEffect, useState, Fragment } from "react";
 import { supabase } from "@/lib/supabase";
@@ -8,7 +8,6 @@ import Link from "next/link";
 interface PageProps {
   params: {
     slug: string;
-    // Add other properties if needed
   };
 }
 

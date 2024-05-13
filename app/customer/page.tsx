@@ -1,11 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
-import Product_Hot from "../components/product_hot";
+import Product_Hot from "./components/product_hot";
 import EmblaCarousel from "../components/carousel";
 import Link from "next/link";
-import { GetProfile } from "../components/GetProfile";
+import { GetProfile } from "../auth/GetProfile";
 import Loading from "../components/loading";
-import Navigator from "../components/footer";
+import Navigator from "./components/footer";
 
 interface Profile {
   pictureUrl?: string; 

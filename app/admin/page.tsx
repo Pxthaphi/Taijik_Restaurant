@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import EmblaCarousel from "../components/carousel";
 import "../assets/css/embla.css";
 import Link from "next/link";
-import { GetProfile } from "../components/GetProfile";
+import { GetProfile } from "../auth/GetProfile";
 import Loading from "../components/loading";
 
 interface Profile {
