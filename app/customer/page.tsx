@@ -174,7 +174,6 @@ export default function Customer() {
       </main>
 
       <footer className="mt-12 pt-12">
-        {/* Add margin-top to create space between main content and footer */}
         <Navigator profile={profile} />
       </footer>
     </>

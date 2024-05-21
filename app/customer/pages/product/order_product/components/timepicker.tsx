@@ -41,8 +41,10 @@ function ButtonField(props: ButtonFieldProps) {
     borderRadius: "14px",
     padding: "8px 16px",
     cursor: "pointer",
-    backgroundColor: "#48BD4C", // เปลี่ยนสีเป็นสีเขียวอ่อน (หรือสีเทียนหาก disabled)
-    color: "#fff" // เปลี่ยนสีเป็นขาว (หรือดำหาก disabled)
+    backgroundColor: disabled ? "#d3d3d3" : "#48BD4C",
+    color: disabled ? "#000" : "#fff",
+    fontFamily: "DB_v4",
+    fontSize: "14px",
   };
 
   return (
@@ -52,10 +54,11 @@ function ButtonField(props: ButtonFieldProps) {
       aria-label={ariaLabel}
       onClick={() => setOpen?.((prev) => !prev)}
     >
-      {label ? `${label}` : "เลือกเวลา"}
+      {label ? `เวลา ${label} น.` : "เลือกเวลา"}
     </div>
   );
 }
+
 
 function ButtonTimePicker(
   props: Omit<MobileTimePickerProps<Dayjs>, "open" | "onOpen" | "onClose">

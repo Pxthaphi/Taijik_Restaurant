@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Loading_Order from "./components/loading";
 import Swal from "sweetalert2";
 import Link from "next/link";
+import Modal_CancelOrder from "./components/modal-cancel";
 
 interface PageProps {
   params: {
@@ -192,54 +193,8 @@ export default function Order_Status({ params }: PageProps) {
 
         {/* Modal */}
         {isModalOpen && (
-          <div className="fixed inset-0 flex items-center justify-center z-50">
-            <div className="fixed inset-0 bg-black opacity-50"></div>
-            <div className="bg-white p-8 rounded-xl z-50">
-              <h2 className="text-2xl font-DB_Med text-gray-700">
-                ยกเลิกออเดอร์
-              </h2>
-
-              <p className="text-gray-700 my-4">
-                กรุณาระบุข้อความเหตุผลที่ยกเลิกคำสั่งซื้อ?
-              </p>
-              <div className="flex justify-end">
-                <button
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded mr-2"
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  className="px-4 py-2 bg-red-500 text-white rounded"
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    Swal.fire({
-                      title: "ต้องการที่จะยกเลิก??",
-                      text: "ถ้าหากยกเลิกสินค้าแล้ว จะไม่สามารถย้อนกลับได้อีก",
-                      icon: "warning",
-                      showCancelButton: true,
-                      confirmButtonColor: "#32C638",
-                      cancelButtonColor: "#d33",
-                      confirmButtonText: "ต้องการยกเลิก",
-                    }).then((result) => {
-                      if (result.isConfirmed) {
-                        Swal.fire({
-                          title: "ยกเลิกคำสั่งซื้อสำเร็จ!",
-                          text: "ขอบคุณที่ใช้บริการร้านใต้จิกค่ะ.",
-                          icon: "success",
-                          showConfirmButton: false,
-                          timer: 1000,
-                        });
-                        setStatus_order(5);
-                      }
-                    });
-                  }}
-                >
-                  ยืนยัน
-                </button>
-              </div>
-            </div>
-          </div>
+          <Modal_CancelOrder />
+          
         )}
       </main>
 

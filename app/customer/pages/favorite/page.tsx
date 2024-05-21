@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 
+
 export default function Favorite() {
   return (
     <header className="mx-8 mt-8 flex justify-center item-center">
@@ -22,6 +23,5 @@ export default function Favorite() {
       </Link>
       <div className="font-DB_Med text-2xl pt-0.5">รายการโปรด</div>
     </header>
-
   );
 }
