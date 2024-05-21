@@ -31,6 +31,11 @@ export default function Order_Status({ params }: PageProps) {
     return () => clearTimeout(timer);
   }, []);
 
+  // Function to open the modal
+  const openModal = () => {
+    setIsModalOpen(true);
+  };
+
   if (status_order == 1) {
     Status_text = "รอการยืนยันคำสั่งซื้อจากทางร้าน";
     Status_detail = "กำลังรอดำเนินการ......";
@@ -103,7 +108,7 @@ export default function Order_Status({ params }: PageProps) {
             {status_order == 1 && (
               <button
                 className="inline-block bg-red-500 hover:bg-red-600 py-1.5 px-2.5 rounded-full"
-                onClick={() => setIsModalOpen(true)}
+                onClick={openModal}
               >
                 <div className="flex items-center justify-center">
                   <svg
@@ -193,7 +198,7 @@ export default function Order_Status({ params }: PageProps) {
 
         {/* Modal */}
         {isModalOpen && (
-          <Modal_CancelOrder />
+          <Modal_CancelOrder setIsModalOpen={setIsModalOpen} />
           
         )}
       </main>
