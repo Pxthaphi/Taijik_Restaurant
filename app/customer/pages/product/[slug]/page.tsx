@@ -265,12 +265,12 @@ export default function Product_Detail({ params }: PageProps) {
                 </div>
                 <div className="pt-2">
                   <div className="font-DB_v4 text-sm">รีวิว</div>
-                  <a
-                    href="#"
+                  <Link
+                    href={`../review/${params.slug}`}
                     className="text-sm font-DB_v4 text-gray-700 underline hover:no-underline"
                   >
                     73 review
-                  </a>
+                  </Link>
                 </div>
                 <div className="pt-2">
                   <div className="font-DB_v4 text-sm">ระยะเวลาทำ</div>

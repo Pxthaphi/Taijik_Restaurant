@@ -21,6 +21,7 @@
     "@nextui-org/system": "^2.1.2",
     "@nextui-org/theme": "^2.2.3",
     "@supabase/supabase-js": "^2.42.4",
+    "canvas-confetti": "^1.9.3",
     "dayjs": "^1.11.11",
     "dotenv": "^16.4.5",
     "embla-carousel-autoplay": "^8.0.1",
@@ -37,6 +38,7 @@
   },
   "devDependencies": {
     "@iconify/tailwind": "^0.1.4",
+    "@types/canvas-confetti": "^1.6.4",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^20",
     "@types/react": "^18",

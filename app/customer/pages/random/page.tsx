@@ -1,26 +1,29 @@
 "use client";
 import Swal from "sweetalert2";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import "./css/sweet_style.css";
 import { getUserID } from "@/app/auth/getUserID";
+import { Select, SelectItem, Avatar } from "@nextui-org/react";
+import { users } from "./components/data";
+import confetti from "canvas-confetti";
 
 export default function Random_Food() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
 
   const userID = getUserID();
-  console.log("UserID (Random page) : ", userID)
+  console.log("UserID (Random page) : ", userID);
 
   const goBack = () => {
     router.back();
   };
 
   const handleAnimationClick = async () => {
-    await Random(); // เรียกใช้ฟังก์ชัน Random และรอจนกว่าจะเสร็จสมบูรณ์
+    await randomFood(); // เรียกใช้ฟังก์ชัน randomFood และรอจนกว่าจะเสร็จสมบูรณ์
   };
 
-  async function Random() {
+  async function randomFood() {
     Swal.fire({
       title: "กำลังสุ่มเมนูอาหาร",
       text: "กรุณารอสักครู่....",
@@ -32,6 +35,13 @@ export default function Random_Food() {
         Swal.showLoading(Swal.getDenyButton());
       },
     }).then(() => {
+      // นำ confetti มาแสดง
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+      });
+
       Swal.fire({
         html: `
           <div>
@@ -82,6 +92,7 @@ export default function Random_Food() {
       });
     });
   }
+
   return (
     <>
       <header className="mx-8 mt-8 flex justify-center item-center">
@@ -97,7 +108,7 @@ export default function Random_Food() {
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
-              d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
+              d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
             />
           </svg>
         </div>
@@ -106,17 +117,17 @@ export default function Random_Food() {
 
       <section className="flex justify-center mt-12 pt-10 animate-fade-up animate-duration-[1000ms]">
         <div className="w-full max-w-sm p-4 bg-white rounded-lg shadow-lg sm:p-6">
-          <div className="flex justify-center my-5 ">
+          <div className="flex justify-center my-5">
             <div className="me-2 h-8 bg-gray-100 p-0.5 rounded-lg flex items-center justify-center">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
-                className="w-7 h-7 text-orange-400 animate-rotate-y animate-infinite animate-duration-[2500ms] animate-ease-in-out" // Adjusted size and color
+                className="w-7 h-7 text-orange-400 animate-rotate-y animate-infinite animate-duration-[2500ms] animate-ease-in-out"
               >
                 <path
-                  fill="currentColor" // Changed to fill with currentColor
+                  fill="currentColor"
                   fillRule="evenodd"
-                  d="M4 17a1 1 0 0 1 0-2h2l3-3l-3-3H4a1.001 1.001 0 0 1 0-2h3l4 4l4-4h2V5l4 3.001L17 11V9h-1l-3 3l3 3h1v-2l4 3l-4 3v-2h-2l-4-4l-4 4z"
+                  d="M4 17a1 1 0 0 1 0-2h2l3-3-3-3H4a1 1 0 1 1 0-2h3l4 4 4-4h2V5l4 3.001L17 11V9h-1l-3 3 3 3h1v-2l4 3-4 3v-2h-2l-4-4-4 4z"
                 ></path>
               </svg>
             </div>
@@ -133,46 +144,66 @@ export default function Random_Food() {
             เลือกหมวดหมู่ที่ต้องการสุ่ม เช่น หมวดหมู่ทั้งหมด , เมนูขายดี ,
             เมนูข้าว , เมนูเส้น หรือ เมนูต้ม เป็นต้น
           </p>
-          <ul className="my-4 space-y-3">
-            <li>
-              <a
-                href="#"
-                className="flex items-center p-3 text-base font-bold text-gray-900 rounded-lg bg-gray-50 hover:bg-gray-100 group hover:shadow dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-white"
-              >
-                <svg
-                  aria-hidden="true"
-                  className="h-4"
-                  viewBox="0 0 40 38"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M39.0728 0L21.9092 12.6999L25.1009 5.21543L39.0728 0Z"
-                    fill="#E17726"
+
+          <Select
+            items={users}
+            placeholder="กรุณาเลือกหมวดหมู่เพื่อทำการสุ่ม"
+            labelPlacement="outside"
+            className="pt-5"
+            classNames={{
+              base: "max-w-sm",
+              trigger: "h-12",
+            }}
+            renderValue={(items) => {
+              return items.map((item) => (
+                <div key={item.key} className="flex items-center gap-2">
+                  <Avatar
+                    alt={item.data?.name ?? "Unknown"}
+                    className="flex-shrink-0"
+                    size="sm"
+                    src={item.data?.avatar ?? ""}
                   />
-                  {/* Other paths */}
-                </svg>
-                <span className="flex-1 ms-3 whitespace-nowrap">
-                  ค่อยมาแก้ ส่วนเลือก
-                </span>
-                <span className="inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-medium text-gray-500 bg-gray-200 rounded dark:bg-gray-700 dark:text-gray-400">
-                  Popular
-                </span>
-              </a>
-            </li>
-            {/* Other list items */}
-          </ul>
-          <div className="flex justify-center item- my-4 mt-8">
+                  <div className="flex flex-col">
+                    <span>{item.data?.name ?? "Unknown"}</span>
+                    <span className="text-default-500 text-tiny">
+                      ({item.data?.email ?? "No email"})
+                    </span>
+                  </div>
+                </div>
+              ));
+            }}
+          >
+            {(user) => (
+              <SelectItem key={user.id} textValue={user.name}>
+                <div className="flex gap-2 items-center">
+                  <Avatar
+                    alt={user.name}
+                    className="flex-shrink-0"
+                    size="sm"
+                    src={user.avatar}
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-small">{user.name}</span>
+                    <span className="text-tiny text-default-400">
+                      {user.email}
+                    </span>
+                  </div>
+                </div>
+              </SelectItem>
+            )}
+          </Select>
+
+          <div className="flex justify-center my-4 mt-8">
             <div className="inline-flex items-center bg-orange-400 hover:bg-orange-500 text-white rounded-3xl py-2 px-6 text-lg">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
-                className="w-7 h-7 me-2 text-white" // Adjusted size and color
+                className="w-7 h-7 me-2 text-white"
               >
                 <path
-                  fill="currentColor" // Changed to fill with currentColor
+                  fill="currentColor"
                   fillRule="evenodd"
-                  d="M4 17a1 1 0 0 1 0-2h2l3-3l-3-3H4a1.001 1.001 0 0 1 0-2h3l4 4l4-4h2V5l4 3.001L17 11V9h-1l-3 3l3 3h1v-2l4 3l-4 3v-2h-2l-4-4l-4 4z"
+                  d="M4 17a1 1 0 0 1 0-2h2l3-3-3-3H4a1 1 0 1 1 0-2h3l4 4 4-4h2V5l4 3.001L17 11V9h-1l-3 3 3 3h1v-2l4 3-4 3v-2h-2l-4-4-4 4z"
                 ></path>
               </svg>
 

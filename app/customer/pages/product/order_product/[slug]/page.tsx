@@ -5,6 +5,8 @@ import Loading_Order from "./components/loading";
 import Swal from "sweetalert2";
 import Link from "next/link";
 import Modal_CancelOrder from "./components/modal-cancel";
+import confetti from "canvas-confetti";
+
 
 interface PageProps {
   params: {
@@ -30,6 +32,17 @@ export default function Order_Status({ params }: PageProps) {
 
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!loading && status_order === 4) {
+      // Trigger confetti effect
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+      });
+    }
+  }, [loading, status_order]);
 
   // Function to open the modal
   const openModal = () => {
@@ -64,6 +77,7 @@ export default function Order_Status({ params }: PageProps) {
       "https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/success_order.png";
     Status_bgcolor = "bg-green-600";
     Status_textcolor = "text-green-700";
+
   } else if (status_order == 5) {
     Status_text = "ยกเลิกคำสั่งซื้อ";
     Status_detail = "ทางร้านขออภัยหากเกิดมีข้อผิดพลาดประการใด";
@@ -79,6 +93,7 @@ export default function Order_Status({ params }: PageProps) {
     Status_bgcolor = "bg-orange-600";
     Status_textcolor = "text-orange-600";
   }
+
 
   if (loading) {
     return <Loading_Order />;
