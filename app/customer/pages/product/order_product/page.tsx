@@ -37,6 +37,13 @@ export default function Order_Product() {
 
         if (cartError) throw cartError;
 
+        // Check if cartData is empty
+      if (cartData.length === 0) {
+        // Navigate back to product page
+        router.push('../product');
+        return;
+      }
+
         const initialQuantityMap: { [productId: string]: number } = {};
         cartData.forEach((item) => {
           initialQuantityMap[item.Product_ID] = item.Product_Qty;
@@ -68,22 +75,22 @@ export default function Order_Product() {
 
     fetchProductsFromCart();
 
-    const subscription = supabase
-      .channel("custom-all-channel")
+    const channel = supabase
+      .channel("realtime-cart")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "cart" },
         (payload) => {
           console.log("Change received!", payload);
-          fetchProductsFromCart();
+          fetchProductsFromCart()
         }
       )
       .subscribe();
 
     return () => {
-      subscription.unsubscribe(); // Cleanup subscription
+      supabase.removeChannel(channel)
     };
-  }, []);
+  }, [supabase]);
 
   const handleCloseTimePicker = () => {
     console.log("Selected time:", selectedTimeDisplay);
