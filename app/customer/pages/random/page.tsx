@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import "./css/sweet_style.css";
 import { getUserID } from "@/app/auth/getUserID";
 import { Select, SelectItem, Avatar } from "@nextui-org/react";
-import { users } from "./components/data";
+import { typeproduct } from "./components/data";
 import confetti from "canvas-confetti";
 
 export default function Random_Food() {
@@ -42,8 +42,10 @@ export default function Random_Food() {
         origin: { y: 0.6 },
       });
 
-      Swal.fire({
-        html: `
+      // Add a delay of 1 second (1000 milliseconds)
+      setTimeout(() => {
+        Swal.fire({
+          html: `
           <div>
             <div class="text-3xl text-gray-700 font-DB_Med">สุ่มอาหารสำเร็จ</div>
             <div class="my-2">
@@ -53,43 +55,29 @@ export default function Random_Food() {
               <div class="flex justify-center item-center text-gray-700 text-lg font-DB_Med">เมนูที่สุ่มได้คือ <span class="text-orange-600 mx-1">ข้าวกะเพราไก่</span></div>
             </div>
           </div>`,
-        icon: "success",
-        showDenyButton: true,
-        showCancelButton: false,
-        confirmButtonText: `
+          icon: "success",
+          showDenyButton: true,
+          showCancelButton: false,
+          confirmButtonText: `
           <div class="flex justify-center items-center">
-            <!-- SVG icon -->
-            <svg xmlns="http://www.w3.org/2000/svg" class="me-2" width="1em" height="1em" viewBox="0 0 24 24">
-              <path fill="currentColor" d="m17.275 20.25l3.475-3.45l-1.05-1.05l-2.425 2.375l-.975-.975l-1.05 1.075zM6 9h12V7H6zm12 14q-2.075 0-3.537-1.463T13 18t1.463-3.537T18 13t3.538 1.463T23 18t-1.463 3.538T18 23M3 22V5q0-.825.588-1.412T5 3h14q.825 0 1.413.588T21 5v6.675q-.7-.35-1.463-.513T18 11H6v2h7.1q-.425.425-.787.925T11.675 15H6v2h5.075q-.05.25-.062.488T11 18q0 1.05.288 2.013t.862 1.837L12 22l-1.5-1.5L9 22l-1.5-1.5L6 22l-1.5-1.5z"></path>
-            </svg>
-            <!-- Text -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="me-2" width="1em" height="1em" viewBox="0 0 24 24">...</svg>
             <div class="text-base text-white font-DB_v4">สั่งอาหารเลย</div>
-          </div>
-        `,
-        denyButtonText: `
+          </div>`,
+          denyButtonText: `
           <div class="flex justify-center items-center">
-            <!-- SVG icon -->
-            <svg xmlns="http://www.w3.org/2000/svg" class="me-2" width="1em" height="1em" viewBox="0 0 21 21" stroke-width="2">
-              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3.578 6.487A8 8 0 1 1 2.5 10.5"></path>
-                <path d="M7.5 6.5h-4v-4"></path>
-              </g>
-            </svg>
-            <!-- Text -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="me-2" width="1em" height="1em" viewBox="0 0 21 21" stroke-width="2">...</svg>
             <div class="text-base font-DB_v4 text-white">สุ่มใหม่อีกครั้ง</div>
-          </div>
-        `,
-        denyButtonColor: "#E59B2B",
-        reverseButtons: true,
-      }).then((result) => {
-        if (result.isConfirmed) {
-          // เมื่อกดปุ่มสั่งอาหารเลย
-          console.log("สั่งอาหารอีกครั้ง");
-        } else if (result.isDenied) {
-          // เมื่อกดปุ่มสุ่มอาหารอีกครั้ง
-          handleAnimationClick();
-        }
-      });
+          </div>`,
+          denyButtonColor: "#E59B2B",
+          reverseButtons: true,
+        }).then((result) => {
+          if (result.isConfirmed) {
+            console.log("สั่งอาหารอีกครั้ง");
+          } else if (result.isDenied) {
+            handleAnimationClick(); // Assuming this function is defined elsewhere
+          }
+        });
+      }, 100); // Delay of 1000 milliseconds (1 second)
     });
   }
 
@@ -146,7 +134,7 @@ export default function Random_Food() {
           </p>
 
           <Select
-            items={users}
+            items={typeproduct}
             placeholder="กรุณาเลือกหมวดหมู่เพื่อทำการสุ่ม"
             labelPlacement="outside"
             className="pt-5"
@@ -158,34 +146,38 @@ export default function Random_Food() {
               return items.map((item) => (
                 <div key={item.key} className="flex items-center gap-2">
                   <Avatar
-                    alt={item.data?.name ?? "Unknown"}
+                    alt={item.data?.Type_Name ?? "Unknown"}
                     className="flex-shrink-0"
                     size="sm"
-                    src={item.data?.avatar ?? ""}
+                    src={item.data?.Type_Icon ?? ""}
                   />
                   <div className="flex flex-col">
-                    <span>{item.data?.name ?? "Unknown"}</span>
+                    <span>{item.data?.Type_Name ?? "Unknown"}</span>
                     <span className="text-default-500 text-tiny">
-                      ({item.data?.email ?? "No email"})
+                      {/* ({item.data?.email ?? "No email"}) */}
                     </span>
                   </div>
                 </div>
               ));
             }}
+            aria-label="เลือกหมวดหมู่เพื่อทำการสุ่ม"
           >
-            {(user) => (
-              <SelectItem key={user.id} textValue={user.name}>
+            {(typeproduct) => (
+              <SelectItem
+                key={typeproduct.Type_ID}
+                textValue={typeproduct.Type_Name}
+              >
                 <div className="flex gap-2 items-center">
                   <Avatar
-                    alt={user.name}
+                    alt={typeproduct.Type_Name}
                     className="flex-shrink-0"
                     size="sm"
-                    src={user.avatar}
+                    src={typeproduct.Type_Icon}
                   />
                   <div className="flex flex-col">
-                    <span className="text-small">{user.name}</span>
+                    <span className="text-small">{typeproduct.Type_Name}</span>
                     <span className="text-tiny text-default-400">
-                      {user.email}
+                      {/* {type.email} */}
                     </span>
                   </div>
                 </div>

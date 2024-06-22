@@ -1,9 +1,10 @@
-'use client'
+"use client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, Fragment } from "react";
 import { supabase } from "@/lib/supabase";
 import { PostgrestError } from "@supabase/supabase-js";
 import Link from "next/link";
+import { getUserID } from "@/app/auth/getUserID";
 
 interface PageProps {
   params: {
@@ -16,7 +17,7 @@ interface Product {
   Product_Name: string;
   Product_Detail: string;
   Product_Price: number;
-  Product_Image: string; // Added Product_Image field
+  Product_Image: string;
 }
 
 export default function Product_Detail({ params }: PageProps) {
@@ -26,8 +27,10 @@ export default function Product_Detail({ params }: PageProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
+  
   // Define state to hold the total price
   const [totalPrice, setTotalPrice] = useState<number>(0);
+  const userID = getUserID();
 
   // Function to calculate total price
   const calculateTotalPrice = (price: number) => {
@@ -87,6 +90,30 @@ export default function Product_Detail({ params }: PageProps) {
       setLoading(false);
     }
   }
+
+  async function pickMenu() {
+    try {
+      const { data, error } = await supabase
+        .from("cart")
+        .insert([
+          { User_ID: userID, Product_ID: params.slug, Product_Qty: quantity },
+        ])
+        .select();
+
+      if (error) {
+        console.error("Error adding product to cart:", error.message);
+      } else {
+        console.log("Product added to cart successfully:", data);
+        window.location.href = "../product";
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+    }
+  }
+
+  console.log("UserID (Product page) : ", userID);
+  console.log("Product_ID (Product page) : ", params.slug);
+  console.log("Product_Qty (Product page) : ", quantity);
 
   useEffect(() => {
     fetchProducts();
@@ -515,9 +542,9 @@ export default function Product_Detail({ params }: PageProps) {
           {/* End Input Number */}
         </div>
 
-        <Link
-          href="order_product"
+        <button
           className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white rounded-3xl py-3 px-10 text-lg font-DB_Med"
+          onClick={pickMenu}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -528,7 +555,7 @@ export default function Product_Detail({ params }: PageProps) {
             <path d="M2.25 2.25a.75.75 0 0 0 0 1.5h1.386c.17 0 .318.114.362.278l2.558 9.592a3.752 3.752 0 0 0-2.806 3.63c0 .414.336.75.75.75h15.75a.75.75 0 0 0 0-1.5H5.378A2.25 2.25 0 0 1 7.5 15h11.218a.75.75 0 0 0 .674-.421 60.358 60.358 0 0 0 2.96-7.228.75.75 0 0 0-.525-.965A60.864 60.864 0 0 0 5.68 4.509l-.232-.867A1.875 1.875 0 0 0 3.636 2.25H2.25ZM3.75 20.25a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0ZM16.5 20.25a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0Z" />
           </svg>
           เพิ่มลงตะกร้า ฿{totalPrice}
-        </Link>
+        </button>
       </footer>
     </>
   );
