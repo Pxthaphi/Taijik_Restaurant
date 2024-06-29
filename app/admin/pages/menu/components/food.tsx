@@ -60,7 +60,7 @@ export default function Food() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, fetchProducts]); // Run once on component mount
+  }, [supabase]); // Run once on component mount
 
   if (loading) {
     return (
