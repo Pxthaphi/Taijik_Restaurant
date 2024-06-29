@@ -165,7 +165,7 @@ export default function Order_Product() {
     return totalPrice;
   };
 
-  const goBack = () => router.back();
+  const goBack = () => router.push('../product');
 
   return (
     <>
