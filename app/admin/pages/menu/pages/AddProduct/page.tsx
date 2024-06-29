@@ -113,6 +113,7 @@ export default function Add_Product() {
         .from("products")
         .insert([
           {
+            Product_ID: productID,
             Product_Name: menuName,
             Product_Detail: P_Detail,
             Product_Price: price,
