@@ -49,7 +49,7 @@ export default function Random_Food() {
           <div>
             <div class="text-3xl text-gray-700 font-DB_Med">สุ่มอาหารสำเร็จ</div>
             <div class="my-2">
-              <img src="https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Product/test3.jpg" alt="Custom image" class="w-full h-auto rounded-2xl my-5"/>
+              <img src="https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Product/2.jpg" alt="Custom image" class="w-full h-auto rounded-2xl my-5"/>
             </div>  
             <div class="mt-1">
               <div class="flex justify-center item-center text-gray-700 text-lg font-DB_Med">เมนูที่สุ่มได้คือ <span class="text-orange-600 mx-1">ข้าวกะเพราไก่</span></div>
