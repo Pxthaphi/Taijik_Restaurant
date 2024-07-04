@@ -41,6 +41,8 @@ export default function Product_Hot() {
   }
 
   useEffect(() => {
+    fetchProducts();
+
     const channel = supabase
       .channel("realtime-products")
       .on(
