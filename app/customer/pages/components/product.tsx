@@ -41,8 +41,22 @@ export default function Product() {
   }
 
   useEffect(() => {
-    fetchProducts();
-  }, []); // Run once on component mount
+    const channel = supabase
+      .channel("realtime-products")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "products" },
+        (payload) => {
+          console.log("Change received!", payload);
+          fetchProducts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase]); // Run once on component mount
 
   if (loading) {
     return (
