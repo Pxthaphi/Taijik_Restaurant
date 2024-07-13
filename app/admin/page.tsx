@@ -5,7 +5,6 @@ import "../assets/css/embla.css";
 import Link from "next/link";
 import { GetProfile } from "../auth/GetProfile";
 import Loading from "../components/loading";
-import option from "./pages/components/option"
 
 interface Profile {
   pictureUrl?: string;
@@ -16,17 +15,6 @@ interface Profile {
 export default function Customer() {
   const [profile, setProfile] = useState<Profile>({});
   const [loading, setLoading] = useState(true);
-
-  const [isOpen, setIsOpen] = useState(false);
-
-  const openModal = () => {
-    setIsOpen(true);
-    <option />
-  };
-
-  const closeModal = () => {
-    setIsOpen(false);
-  };
 
   useEffect(() => {
     async function checkRole() {
@@ -198,7 +186,6 @@ export default function Customer() {
       <Link
         href="#"
         className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
-        onClick={openModal}
       >
         <img
           src="https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/option.png"

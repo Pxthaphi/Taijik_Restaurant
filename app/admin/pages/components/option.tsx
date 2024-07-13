@@ -3,7 +3,7 @@ import {Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, useDis
 import {MailIcon} from './assets/MailIcon.jsx';
 import {LockIcon} from './assets/LockIcon.jsx';
 
-export default function opiton() {
+export default function Opiton_Time() {
   const {isOpen, onOpen, onOpenChange} = useDisclosure();
 
   return (
