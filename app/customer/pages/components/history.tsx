@@ -73,7 +73,7 @@ export default function History_Order() {
   }
 
   if (products.length === 0) {
-    return <p>No products available</p>;
+    return <p className="font-DB_v4">ไม่พบการสั่งอาหาร ลองสั่งเลย!!</p>;
   }
 
   return (

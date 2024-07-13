@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { PostgrestError } from "@supabase/supabase-js";
 import Link from "next/link";
 import { getUserID } from "@/app/auth/getUserID";
+import { CheckboxGroup, Checkbox, RadioGroup, Radio } from "@nextui-org/react";
 
 interface PageProps {
   params: {
@@ -15,36 +16,59 @@ interface PageProps {
 interface Product {
   Product_ID: number;
   Product_Name: string;
-  Product_Detail: string;
   Product_Price: number;
   Product_Image: string;
+}
+
+interface Meat {
+  Meat_ID: number;
+  Meat_Name: string;
+  Meat_Price: number;
+}
+
+interface FoodOption {
+  Option_ID: number;
+  Option_Name: string;
+  Option_Price: number;
 }
 
 export default function Product_Detail({ params }: PageProps) {
   const router = useRouter();
   const [isAnimation, setIsAnimation] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
+  const [meats, setMeats] = useState<Meat[]>([]);
+  const [options, setOptions] = useState<FoodOption[]>([]);
+  const [selectedSize, setSelectedSize] = useState<number>(0);
+  const [selectedMeat, setSelectedMeat] = useState<number | null>(null);
+  const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
-  
+
   // Define state to hold the total price
   const [totalPrice, setTotalPrice] = useState<number>(0);
   const userID = getUserID();
 
   // Function to calculate total price
-  const calculateTotalPrice = (price: number) => {
-    return price * quantity;
+  const calculateTotalPrice = () => {
+    if (products.length > 0) {
+      const basePrice = products[0].Product_Price;
+      const meatPrice = selectedMeat
+        ? meats.find((meat) => meat.Meat_ID === selectedMeat)?.Meat_Price || 0
+        : 0;
+      const optionsPrice = selectedOptions.reduce((acc, optionID) => {
+        const option = options.find((option) => option.Option_ID === optionID);
+        return acc + (option ? option.Option_Price : 0);
+      }, 0);
+      return (basePrice + selectedSize + meatPrice + optionsPrice) * quantity;
+    }
+    return 0;
   };
 
   // Update total price whenever the quantity changes
   useEffect(() => {
-    if (products.length > 0) {
-      const pricePerItem = products[0].Product_Price;
-      const newTotalPrice = calculateTotalPrice(pricePerItem);
-      setTotalPrice(newTotalPrice);
-    }
-  }, [quantity, products]);
+    setTotalPrice(calculateTotalPrice());
+  }, [quantity, selectedMeat, selectedSize, selectedOptions, products]);
 
   const incrementQuantity = () => {
     if (quantity < 99) {
@@ -58,10 +82,6 @@ export default function Product_Detail({ params }: PageProps) {
     }
   };
 
-  const handleAnimationClick = () => {
-    setIsAnimation(!isAnimation);
-  };
-
   const goBack = () => {
     router.back();
   };
@@ -73,21 +93,59 @@ export default function Product_Detail({ params }: PageProps) {
       // Fetch necessary columns including Product_Image
       const { data, error } = await supabase
         .from("products")
-        .select(
-          "Product_ID, Product_Name, Product_Detail, Product_Price, Product_Image"
-        )
+        .select("Product_ID, Product_Name, Product_Price, Product_Image")
         .eq("Product_ID", params.slug);
 
       if (error) {
         throw error;
       } else {
         setProducts(data as Product[]);
-        console.log(data);
+        console.table(data);
+        await checkProductFavorite();
+        console.log("check success");
       }
     } catch (error) {
       setError((error as PostgrestError).message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchMeat() {
+    try {
+      // Fetch necessary columns including Product_Image
+      const { data, error } = await supabase
+        .from("product_meat")
+        .select("*")
+        .order("Meat_ID");
+
+      if (error) {
+        throw error;
+      } else {
+        setMeats(data as Meat[]);
+        console.table(data);
+      }
+    } catch (error) {
+      setError((error as PostgrestError).message);
+    }
+  }
+
+  async function fetchOption() {
+    try {
+      // Fetch necessary columns including Product_Image
+      const { data, error } = await supabase
+        .from("product_option")
+        .select("*")
+        .order("Option_ID");
+
+      if (error) {
+        throw error;
+      } else {
+        setOptions(data as FoodOption[]);
+        console.table(data);
+      }
+    } catch (error) {
+      setError((error as PostgrestError).message);
     }
   }
 
@@ -115,9 +173,73 @@ export default function Product_Detail({ params }: PageProps) {
   console.log("Product_ID (Product page) : ", params.slug);
   console.log("Product_Qty (Product page) : ", quantity);
 
+  async function checkProductFavorite() {
+    try {
+      const { data, error } = await supabase
+        .from("favorite")
+        .select("User_ID, Product_ID")
+        .eq("User_ID", userID)
+        .eq("Product_ID", params.slug);
+
+      if (error) {
+        throw error;
+      } else {
+        if (data && data.length > 0) {
+          console.log("find product in favorite!");
+          setIsAnimation(true);
+        } else {
+          console.log("not find product in favorite!");
+          setIsAnimation(false);
+        }
+      }
+    } catch (error) {
+      setError((error as PostgrestError).message);
+    }
+  }
+
+  async function toggleFavorite() {
+    try {
+      if (isAnimation) {
+        // Remove from favorites
+        await supabase
+          .from("favorite")
+          .delete()
+          .eq("User_ID", userID)
+          .eq("Product_ID", params.slug);
+
+        if (error) {
+          throw error;
+        } else {
+          console.log("Remove product from favorite success!!");
+        }
+      } else {
+        // Add to favorites
+        await supabase
+          .from("favorite")
+          .insert([{ User_ID: userID, Product_ID: params.slug }]);
+        if (error) {
+          throw error;
+        } else {
+          console.log("Add product to favorite success!!");
+        }
+      }
+
+      // After toggling, update the animation state
+      setIsAnimation(!isAnimation);
+    } catch (error: any) {
+      console.error("Error toggling favorite:", error.message);
+    }
+  }
+
   useEffect(() => {
     fetchProducts();
-  }, []); // Run once on component mount
+    fetchMeat();
+    fetchOption();
+  }, []);
+
+  useEffect(() => {
+    checkProductFavorite(); // Re-check favorite status whenever isAnimation changes
+  }, [isAnimation]);
 
   if (loading) {
     return (
@@ -209,7 +331,7 @@ export default function Product_Detail({ params }: PageProps) {
               {/* favorite button*/}
               <div
                 className="absolute top-8 right-8 bg-gray-50 rounded-full p-2"
-                onClick={handleAnimationClick}
+                onClick={toggleFavorite}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -320,243 +442,188 @@ export default function Product_Detail({ params }: PageProps) {
               </div>
             </div>
           </section>
+
+          <section>
+            <div className="mx-8 mt-8">
+              <div className="font-DB_Med text-xl">ขนาด</div>
+              <div className="pt-3">
+                <RadioGroup
+                  value={selectedSize.toString()}
+                  onValueChange={(e) => setSelectedSize(parseInt(e))}
+                  color="success"
+                >
+                  <div className="pt-2">
+                    <div className="flex items-center justify-between">
+                      <Radio value="0" className="font-DB_v4">
+                        ธรรมดา
+                      </Radio>
+                      <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
+                        ฿0
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-3">
+                      <Radio value="10" className="font-DB_v4">
+                        พิเศษ
+                      </Radio>
+                      <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
+                        ฿10
+                      </div>
+                    </div>
+                  </div>
+                </RadioGroup>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <div className="mx-8 mt-8">
+              <div className="font-DB_Med text-xl">เลือกเนื้อสัตว์</div>
+              <div className="pt-2">
+                <div className="mb-4">
+                  <RadioGroup
+                    value={selectedMeat?.toString()}
+                    onValueChange={(e) => setSelectedMeat(parseInt(e))}
+                    color="success"
+                  >
+                    {meats.map((meat) => (
+                      <div key={meat.Meat_ID} className="flex items-center justify-between pt-2">
+                        <Radio
+                          value={`${meat.Meat_ID}`}
+                          className="flex-grow font-DB_v4"
+                        >
+                          {meat.Meat_Name}
+                        </Radio>
+                        <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl ml-4">
+                          ฿{meat.Meat_Price}
+                        </div>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <div className="mx-8 mt-8">
+              <div className="font-DB_Med text-xl">เพิ่มเติม</div>
+              <CheckboxGroup
+                value={selectedOptions.map((opt) => opt.toString())}
+                onValueChange={(e) =>
+                  setSelectedOptions(e.map((opt) => parseInt(opt)))
+                }
+                color="success"
+              >
+                {options.map((option) => (
+                  <div key={option.Option_ID} className="flex items-center justify-between pt-2">
+                    <Checkbox
+                      value={`${option.Option_ID}`}
+                      className="flex-grow font-DB_v4"
+                    >
+                      {option.Option_Name}
+                    </Checkbox>
+                    <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl ml-4">
+                      ฿{option.Option_Price}
+                    </div>
+                  </div>
+                ))}
+              </CheckboxGroup>
+            </div>
+          </section>
+
+          <section className="mt-7 pb-12">
+            <div className="max-w-sm mx-8">
+              <div className="text-lg font-DB_Med">รายละเอียดเพิ่มเติม</div>
+              <textarea
+                id="textarea-label"
+                className="mt-5 py-4 px-4 block w-full border border-gray-300 bg-gray-50 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none"
+                placeholder="เช่น ไม่เอาผัก"
+              />
+            </div>
+          </section>
+
+          <div className="m-12"></div>
+
+          <footer className="fixed bottom-4 left-0 right-0 flex justify-center mt-12 ">
+            <div className="me-5 pt-1">
+              {/* Input Number */}
+              <div
+                className="py-2.5 px-3 inline-block bg-white border border-gray-200 rounded-xl"
+                data-hs-input-number=""
+              >
+                <div className="flex items-center gap-x-2.5">
+                  <button
+                    type="button"
+                    onClick={decrementQuantity}
+                    className="size-6 inline-flex justify-center items-center gap-x-2 text-sm font-medium rounded-md border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none"
+                    data-hs-input-number-decrement=""
+                  >
+                    <svg
+                      className="flex-shrink-0 size-3.5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M5 12h14"></path>
+                    </svg>
+                  </button>
+                  <input
+                    className="p-0 w-6 bg-transparent border-0 text-gray-800 text-center focus:ring-0"
+                    type="text"
+                    value={quantity}
+                    readOnly
+                    data-hs-input-number-input=""
+                  />
+                  <button
+                    type="button"
+                    onClick={incrementQuantity}
+                    className="size-6 inline-flex justify-center items-center gap-x-2 text-sm font-medium rounded-md border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none "
+                    data-hs-input-number-increment=""
+                  >
+                    <svg
+                      className="flex-shrink-0 size-3.5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M5 12h14"></path>
+                      <path d="M12 5v14"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              {/* End Input Number */}
+            </div>
+
+            <button
+              className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white rounded-3xl py-3 px-8 text-lg font-DB_Med"
+              onClick={pickMenu}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="w-6 h-6 mr-2"
+              >
+                <path d="M2.25 2.25a.75.75 0 0 0 0 1.5h1.386c.17 0 .318.114.362.278l2.558 9.592a3.752 3.752 0 0 0-2.806 3.63c0 .414.336.75.75.75h15.75a.75.75 0 0 0 0-1.5H5.378A2.25 2.25 0 0 1 7.5 15h11.218a.75.75 0 0 0 .674-.421 60.358 60.358 0 0 0 2.96-7.228.75.75 0 0 0-.525-.965A60.864 60.864 0 0 0 5.68 4.509l-.232-.867A1.875 1.875 0 0 0 3.636 2.25H2.25ZM3.75 20.25a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0ZM16.5 20.25a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0Z" />
+              </svg>
+              เพิ่มลงตะกร้า ฿{totalPrice}
+            </button>
+          </footer>
         </Fragment>
       ))}
-
-      <section>
-        <div className="mx-8 mt-8">
-          <div className="font-DB_Med text-xl">ขนาด</div>
-          <div className="pt-2">
-            <div className="flex items-center justify-between pt-2">
-              <div className="flex items-center">
-                <input
-                  id="size_radio"
-                  type="radio"
-                  value="ธรรมดา"
-                  name="size_radio"
-                  className="w-4 h-4 accent-green-500"
-                />
-                <label className="ms-3 font-DB_v4 text-base text-gray-900">
-                  ธรรมดา
-                </label>
-              </div>
-              <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
-                ฿0
-              </div>
-            </div>
-            <div className="flex items-center justify-between pt-2">
-              <div className="flex items-center">
-                <input
-                  id="size_radio"
-                  type="radio"
-                  value="พิเศษ"
-                  name="size_radio"
-                  className="w-4 h-4 accent-green-500"
-                />
-                <label className="ms-3 font-DB_v4 text-base text-gray-900">
-                  พิเศษ
-                </label>
-              </div>
-              <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
-                ฿10
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <div className="mx-8 mt-8">
-          <div className="font-DB_Med text-xl">เลือกเนื้อสัตว์</div>
-          <div className="pt-2">
-            <div className="flex items-center justify-between pt-2">
-              <div className="flex items-center">
-                <input
-                  id="meat_type"
-                  type="radio"
-                  value="ไก่"
-                  name="meat_type"
-                  className="w-4 h-4 accent-green-500"
-                />
-                <label className="ms-3 font-DB_v4 text-base text-gray-900">
-                  ไก่
-                </label>
-              </div>
-              <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
-                ฿0
-              </div>
-            </div>
-            <div className="flex items-center justify-between pt-2">
-              <div className="flex items-center">
-                <input
-                  id="meat_type"
-                  type="radio"
-                  value="หมู"
-                  name="meat_type"
-                  className="w-4 h-4 accent-green-500"
-                />
-                <label className="ms-3 font-DB_v4 text-base text-gray-900">
-                  หมู
-                </label>
-              </div>
-              <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
-                ฿0
-              </div>
-            </div>
-            <div className="flex items-center justify-between pt-2">
-              <div className="flex items-center">
-                <input
-                  id="meat_type"
-                  type="radio"
-                  value="ทะเล"
-                  name="meat_type"
-                  className="w-4 h-4 accent-green-500"
-                />
-                <label className="ms-3 font-DB_v4 text-base text-gray-900">
-                  ทะเล
-                </label>
-              </div>
-              <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
-                ฿10
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section>
-        <div className="mx-8 mt-8">
-          <div className="font-DB_Med text-xl">เพิ่มเติม</div>
-          <div className="pt-2">
-            <div className="flex items-center justify-between pt-2">
-              <div className="flex items-center">
-                <input
-                  id="option_add"
-                  type="radio"
-                  value="ไข่ดาว"
-                  name="option_add"
-                  className="w-4 h-4 accent-green-500"
-                />
-                <label className="ms-3 font-DB_v4 text-base text-gray-900">
-                  ไข่ดาว
-                </label>
-              </div>
-              <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
-                ฿5
-              </div>
-            </div>
-            <div className="flex items-center justify-between pt-2">
-              <div className="flex items-center">
-                <input
-                  id="option_add"
-                  type="radio"
-                  value="ไข่เจียว"
-                  name="option_add"
-                  className="w-4 h-4 accent-green-500"
-                />
-                <label className="ms-3 font-DB_v4 text-base text-gray-900">
-                  ไข่เจียว
-                </label>
-              </div>
-              <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
-                ฿5
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="mt-7 pb-12">
-        <div className="max-w-sm mx-8">
-          <div className="text-lg font-DB_Med">รายละเอียดเพิ่มเติม</div>
-          <textarea
-            id="textarea-label"
-            className="mt-5 py-4 px-4 block w-full border border-gray-300 bg-gray-50 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none"
-            placeholder="เช่น ไม่เอาผัก"
-          />
-        </div>
-      </section>
-
-      <div className="m-12"></div>
-
-      <footer className="fixed bottom-4 left-0 right-0 flex justify-center mt-12 ">
-        <div className="me-5 pt-1">
-          {/* Input Number */}
-          <div
-            className="py-2.5 px-3 inline-block bg-white border border-gray-200 rounded-xl"
-            data-hs-input-number=""
-          >
-            <div className="flex items-center gap-x-2.5">
-              <button
-                type="button"
-                onClick={decrementQuantity}
-                className="size-6 inline-flex justify-center items-center gap-x-2 text-sm font-medium rounded-md border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none"
-                data-hs-input-number-decrement=""
-              >
-                <svg
-                  className="flex-shrink-0 size-3.5"
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M5 12h14"></path>
-                </svg>
-              </button>
-              <input
-                className="p-0 w-6 bg-transparent border-0 text-gray-800 text-center focus:ring-0"
-                type="text"
-                value={quantity}
-                readOnly
-                data-hs-input-number-input=""
-              />
-              <button
-                type="button"
-                onClick={incrementQuantity}
-                className="size-6 inline-flex justify-center items-center gap-x-2 text-sm font-medium rounded-md border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none "
-                data-hs-input-number-increment=""
-              >
-                <svg
-                  className="flex-shrink-0 size-3.5"
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M5 12h14"></path>
-                  <path d="M12 5v14"></path>
-                </svg>
-              </button>
-            </div>
-          </div>
-          {/* End Input Number */}
-        </div>
-
-        <button
-          className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white rounded-3xl py-3 px-10 text-lg font-DB_Med"
-          onClick={pickMenu}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="w-6 h-6 mr-2"
-          >
-            <path d="M2.25 2.25a.75.75 0 0 0 0 1.5h1.386c.17 0 .318.114.362.278l2.558 9.592a3.752 3.752 0 0 0-2.806 3.63c0 .414.336.75.75.75h15.75a.75.75 0 0 0 0-1.5H5.378A2.25 2.25 0 0 1 7.5 15h11.218a.75.75 0 0 0 .674-.421 60.358 60.358 0 0 0 2.96-7.228.75.75 0 0 0-.525-.965A60.864 60.864 0 0 0 5.68 4.509l-.232-.867A1.875 1.875 0 0 0 3.636 2.25H2.25ZM3.75 20.25a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0ZM16.5 20.25a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0Z" />
-          </svg>
-          เพิ่มลงตะกร้า ฿{totalPrice}
-        </button>
-      </footer>
     </>
   );
 }

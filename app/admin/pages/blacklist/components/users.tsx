@@ -1,38 +1,35 @@
-"use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { PostgrestError } from "@supabase/supabase-js";
-import Option_Food from "./opiton";
+import OptionUsers from "./opiton";
 
-// Define the Product interface
-interface Product {
-  Product_ID: number;
-  Product_Name: string;
-  Product_Detail: string;
-  Product_Price: number;
-  Product_Image: string;
-  Product_Status: number;
-  Product_Update: string;
+// Define the User interface
+interface User {
+  User_ID: string;
+  User_Name: string;
+  User_Type: string;
+  User_Picture: string;
+  User_Ticket: number;
 }
 
-export default function Food() {
-  const [products, setProducts] = useState<Product[]>([]);
+export default function Users() {
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Function to fetch products from Supabase
-  async function fetchProducts() {
+  // Function to fetch users from Supabase
+  async function fetchUsers() {
     try {
-      // Fetch necessary columns including Product_Image
       const { data, error } = await supabase
-        .from("products")
+        .from("users")
         .select("*")
-        .order("Product_ID");
+        .eq("User_Type", "customer")
+        .order("User_ID");
 
       if (error) {
         throw error;
       } else {
-        setProducts(data as Product[]);
+        setUsers(data as User[]);
         console.table(data);
       }
     } catch (error) {
@@ -43,16 +40,16 @@ export default function Food() {
   }
 
   useEffect(() => {
-    fetchProducts();
+    fetchUsers();
 
     const channel = supabase
-      .channel("realtime-products")
+      .channel("realtime-users")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "products" },
+        { event: "*", schema: "public", table: "users" },
         (payload) => {
           console.log("Change received!", payload);
-          fetchProducts();
+          fetchUsers();
         }
       )
       .subscribe();
@@ -60,7 +57,7 @@ export default function Food() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase]); // Run once on component mount
+  }, []); // Run once on component mount
 
   if (loading) {
     return (
@@ -92,76 +89,73 @@ export default function Food() {
     return <p>Error: {error}</p>;
   }
 
-  if (products.length === 0) {
-    return <p>ไม่พบเมนูอาหาร กรุณาเพิ่มเมนูอาหาร</p>;
+  if (users.length === 0) {
+    return <p>ไม่พบผู้ใช้ กรุณาเพิ่มผู้ใช้</p>;
   }
 
   return (
     <div className="grid justify-center grid-cols-2 gap-4">
-      {products.map((product) => (
-        <ProductCard key={product.Product_ID} product={product} />
+      {users.map((user) => (
+        <UserCard key={user.User_ID} user={user} />
       ))}
     </div>
   );
 }
-function ProductCard({ product }: { product: Product }) {
+
+function UserCard({ user }: { user: User }) {
   return (
     <div>
       <div className="bg-white border rounded-xl shadow-sm sm:flex">
         <div className="flex-shrink-0 relative w-full rounded-t-xl overflow-hidden pt-[40%] sm:rounded-s-xl sm:max-w-60 md:rounded-se-none md:max-w-xs">
           <img
             className="absolute top-0 start-0 w-full h-full object-cover"
-            src={product.Product_Image}
-            alt={product.Product_Name}
-          />
+            src={user.User_Picture}
+            alt={user.User_Name}
+          />{" "}
+          <div className="w-full h-full bg-gray-200"></div>
         </div>
         <div className="flex flex-wrap w-full">
           <div className="p-4 flex flex-col h-full w-full sm:p-7">
-            <h3 className="text-xl font-DB_Med text-gray-800">
-              {product.Product_Name}
+            <h3 className="text-xl font-bold text-gray-800">
+              {user.User_Name}
             </h3>
             <div className="flex justify-between items-center mt-2">
-              <p className="text-base font-DB_v4">รหัสเมนูอาหาร</p>
-              <p className="text-base font-DB_v4">{product.Product_ID}</p>
-            </div>
-            <div className="flex justify-between items-center mt-2">
-              <p className="text-base font-DB_v4">ราคา</p>
-              <p className="text-base font-DB_v4">฿{product.Product_Price}</p>
-            </div>
-            <div className="flex justify-between items-center mt-2">
-              <p className="text-base font-DB_v4">สถานะ</p>
-              <p className="text-base font-DB_v4">
-                {product.Product_Status == 1 && (
+              <p className="text-sm font-DB_Med">ประเภทผู้ใช้</p>
+              <p className="text-base">
+                {user.User_Type == "customer" && (
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                    ยังมีอยู่
+                    ลูกค้า
                   </span>
                 )}
-                {product.Product_Status == 2 && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-red-100 text-red-800">
-                    หมด
+              </p>
+            </div>
+            <div className="flex justify-between items-center mt-2">
+              <p className="text-sm font-DB_Med">สถานะ Blacklist</p>
+              <p className="text-base">
+                {user.User_Ticket == 0 && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-green-100 text-green-800">
+                    ไม่ติด
                   </span>
                 )}
-                {product.Product_Status == 3 && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-gray-800 text-white">
-                    ปิดใช้งาน
+                {user.User_Ticket == 1 && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-orange-100 text-orange-800">
+                    เสี่ยงปานกลาง
                   </span>
                 )}
-                {product.Product_Status != 1 &&
-                  product.Product_Status != 2 &&
-                  product.Product_Status != 3 && (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-orange-100 text-orange-800">
-                      เกิดข้อผิดพลาด!!
-                    </span>
-                  )}
+                {user.User_Ticket == 2 && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-red-100 text-red-800">
+                    เสี่ยงมาก
+                  </span>
+                )}
+                {user.User_Ticket == 3 && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-orange-500 text-white">
+                    ติด Blacklist
+                  </span>
+                )}
               </p>
             </div>
             <div className="mt-5 flex justify-end space-x-4">
-              <Option_Food productId={product.Product_ID} />
-            </div>
-            <div className="mt-5 sm:mt-auto">
-              <p className="text-xs text-gray-500">
-                แก้ไขล่าสุดเมื่อ {product.Product_Update}
-              </p>
+              <OptionUsers userId={user.User_ID} />
             </div>
           </div>
         </div>

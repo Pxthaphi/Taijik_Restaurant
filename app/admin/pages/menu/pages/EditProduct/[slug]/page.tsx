@@ -4,8 +4,13 @@ import { useDropzone, FileRejection } from "react-dropzone";
 import Swal from "sweetalert2";
 import Link from "next/link";
 import { Input } from "@nextui-org/input";
+import { Textarea } from "@nextui-org/input";
+import { Select, SelectItem, Avatar } from "@nextui-org/react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import { Switch, cn } from "@nextui-org/react";
+import { SunIcon } from "./components/SunIcon";
+import { MoonIcon } from "./components/MoonIcon";
 
 interface PageProps {
   params: {
@@ -13,17 +18,27 @@ interface PageProps {
   };
 }
 
+interface TypeItem {
+  Type_ID: number;
+  Type_Name: string;
+  Type_Icon: string;
+}
+
 export default function Edit_Product({ params }: PageProps) {
   const [menuName, setMenuName] = useState<string>("");
   const [price, setPrice] = useState<string>("");
-  const [selectedType, setSelectedType] = useState<string>("1");
+  const [P_Detail, setP_Detail] = useState("");
+  const [P_Status, setP_Status] = useState("");
+  const [selectedType, setSelectedType] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true); // Add loading state
+  const [productTypes, setProductTypes] = useState<TypeItem[]>([]);
   const router = useRouter();
-
-  const P_Detail = "หมู ไก่ ทะเล รวมมิตร";
-  const P_Status = 1;
+  const [isSelectedStatus, setIsSelectedStatus] = useState(true);
+  const [isSelectedDisable, setIsSelectedDisable] = useState(false);
+  const [readonlySwitch, setReadOnlySwitch] = useState(false);
+  const [disableSwitch, setDisableSwitch] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -40,10 +55,23 @@ export default function Edit_Product({ params }: PageProps) {
 
         if (data) {
           setMenuName(data.Product_Name || "");
+          setP_Detail(data.Product_Detail || "");
           setPrice(data.Product_Price || "");
-          setSelectedType(data.Product_Type.toString() || "1");
+          setSelectedType(data.Product_Type || "");
+          setP_Status(data.Product_Status || "");
           setPreview(data.Product_Image);
+          if (data.Product_Status == 1) {
+            setIsSelectedStatus(true);
+          } else if (data.Product_Status == 2) {
+            setIsSelectedStatus(false);
+          } else if (data.Product_Status == 3) {
+            setIsSelectedStatus(false);
+            setIsSelectedDisable(!isSelectedDisable);
+            setDisableSwitch(!disableSwitch);
+            setReadOnlySwitch(!readonlySwitch);
+          }
         }
+
         setLoading(false); // Set loading to false after fetching data
       } catch (error: any) {
         console.error("Error fetching product:", error.message);
@@ -54,7 +82,6 @@ export default function Edit_Product({ params }: PageProps) {
     };
 
     fetchProduct();
-
   }, [params.slug]);
 
   useEffect(() => {
@@ -65,6 +92,26 @@ export default function Edit_Product({ params }: PageProps) {
       return () => URL.revokeObjectURL(previewURL);
     }
   }, [file]);
+
+  useEffect(() => {
+    const fetchTypeProducts = async () => {
+      try {
+        const { data, error } = await supabase.from("product_type").select("*");
+
+        if (error) {
+          throw new Error("Error fetching type products: " + error.message);
+        }
+
+        if (data) {
+          setProductTypes(data);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchTypeProducts();
+  }, []);
 
   const onDrop = (acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
     if (acceptedFiles.length > 0) {
@@ -134,6 +181,36 @@ export default function Edit_Product({ params }: PageProps) {
     }
   };
 
+  useEffect(() => {
+    if(isSelectedDisable == true){
+      setP_Status("3");
+    }else if(isSelectedStatus == true){
+      setP_Status("1");
+    }else{
+      setP_Status("2");
+    }
+  }, [isSelectedDisable, isSelectedStatus]);
+
+  const handleSwitchStatus = () => {
+    setIsSelectedStatus(!isSelectedStatus);
+  };
+
+  const handleSwitchToggle = () => {
+    setIsSelectedDisable(!isSelectedDisable);
+    setDisableSwitch(!disableSwitch);
+    setReadOnlySwitch(!readonlySwitch);
+  };
+
+  console.log("*************************************");
+  console.log(`ชื่อเมนูอาหาร : ${menuName}`);
+  console.log(`รายละเอียด : ${P_Detail}`);
+  console.log(`ราคา : ${price}`);
+  console.log(`ประเภทเมนูอาหาร : ${selectedType}`);
+  console.log(`สถานะ : ${P_Status}`);
+  console.log("selectStatus : ", isSelectedStatus);
+  console.log("selectDisable : ", isSelectedDisable);
+  console.log("*************************************");
+
   const handleSubmit = async () => {
     if (!menuName || !price) {
       Swal.fire({
@@ -174,7 +251,6 @@ export default function Edit_Product({ params }: PageProps) {
         }
 
         imageUrl = data.publicUrl;
-
       }
 
       // Get current timestamp
@@ -371,6 +447,130 @@ export default function Edit_Product({ params }: PageProps) {
             value={price}
             onChange={(e) => setPrice(e.target.value)}
           />
+
+          <Textarea
+            labelPlacement="outside"
+            label="รายละเอียดสินค้า"
+            variant="flat"
+            placeholder="เช่น หมู ไก่ ทะเล"
+            value={P_Detail}
+            onChange={(e) => setP_Detail(e.target.value)}
+            className="my-5 font-DB_Med"
+            classNames={{
+              base: "max-w-full",
+              input: "resize-y min-h-[40px]",
+            }}
+          />
+
+          <Select
+            items={productTypes}
+            label="ประเภทเมนูอาหาร"
+            placeholder="กรุณาเลือกประเภทเมนูอาหาร"
+            labelPlacement="outside"
+            onChange={(e) => setSelectedType(e.target.value)}
+            value={selectedType}
+            className="py-5 font-DB_Med"
+            classNames={{
+              base: "max-w-full",
+              trigger: "h-12",
+            }}
+            renderValue={(items) => {
+              return items.map((item) => (
+                <div key={item.key} className="flex items-center gap-2">
+                  <Avatar
+                    alt={item.data!.Type_Name}
+                    className="flex-shrink-0"
+                    size="sm"
+                    src={item.data!.Type_Icon}
+                  />
+                  <div className="flex flex-col">
+                    <span>{item.data!.Type_Name}</span>
+                  </div>
+                </div>
+              ));
+            }}
+          >
+            {(Type_P) => (
+              <SelectItem key={Type_P.Type_ID} textValue={Type_P.Type_Name}>
+                <div className="flex gap-2 items-center">
+                  <Avatar
+                    alt={Type_P.Type_Name}
+                    className="flex-shrink-0"
+                    size="sm"
+                    src={Type_P.Type_Icon}
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-small">{Type_P.Type_Name}</span>
+                  </div>
+                </div>
+              </SelectItem>
+            )}
+          </Select>
+
+          <div className="flex justify-between items-center">
+            <div className="flex justify-center items-center">
+              <p className="me-1.5 pt-0.5">สถานเมนูอาหาร:</p>
+              <p
+                className={`text-xl font-DB_Med ${
+                  P_Status === "1"
+                    ? "text-green-600"
+                    : P_Status === "2"
+                    ? "text-red-600"
+                    : "text-black"
+                }`}
+              >
+                {P_Status === "1"
+                  ? "มีเหลือ"
+                  : P_Status === "2"
+                  ? "หมด"
+                  : "ปิดใช้งาน"}
+              </p>
+            </div>
+            <Switch
+              size="lg"
+              isSelected={isSelectedStatus}
+              color={isSelectedStatus ? "success" : "danger"}
+              startContent={<SunIcon />}
+              endContent={<MoonIcon />}
+              isReadOnly={readonlySwitch}
+              isDisabled={disableSwitch}
+              onClick={handleSwitchStatus}
+            />
+          </div>
+
+          <hr className="h-px my-2 bg-gray-100 border-0 pt-1 rounded-full mt-6"></hr>
+
+          <Switch
+            color="danger"
+            size="md"
+            isSelected={isSelectedDisable}
+            onClick={handleSwitchToggle}
+            classNames={{
+              base: cn(
+                "inline-flex flex-row-reverse w-full max-w-md bg-content1 hover:bg-content2 items-center",
+                "justify-between cursor-pointer rounded-lg gap-2 p-4 border-2 border-transparent",
+                "data-[selected=true]:border-red-500"
+              ),
+              wrapper: "p-0 h-4 overflow-visible",
+              thumb: cn(
+                "w-6 h-6 border-2 shadow-lg",
+                "group-data-[hover=true]:border-red-500",
+                //selected
+                "group-data-[selected=true]:ml-6",
+                // pressed
+                "group-data-[pressed=true]:w-7",
+                "group-data-[selected]:group-data-[pressed]:ml-4"
+              ),
+            }}
+          >
+            <div className="flex flex-col gap-1">
+              <p className="text-medium">ปิดใช้งานเมนูอาหาร</p>
+              <p className="text-tiny text-default-400">
+                หากปิดใช้งานเมนูอาหารดังกล่าว
+                ระบบจะทำการซ่อนเมนูจากหน้าจอระบบของลูกค้า
+              </p>
+            </div>
+          </Switch>
 
           <hr className="h-px my-2 bg-gray-100 border-0 pt-1 rounded-full mt-6"></hr>
         </section>

@@ -17,6 +17,7 @@ export async function login() {
       if (userProfile) {
         const User_ID = userProfile.userId;
         const User_Name = userProfile.displayName;
+        const User_Picture = userProfile.pictureUrl;
         const User_Type = "customer"; // Assuming default user type is "customer"
 
         Cookies.set("UserID", User_ID);
@@ -39,7 +40,7 @@ export async function login() {
           try {
             const { data, error } = await supabase
               .from("users")
-              .insert([{ User_ID, User_Name, User_Type }]);
+              .insert([{ User_ID, User_Name, User_Type, User_Picture }]);
 
             console.log("New user added:", data);
           } catch (insertError) {

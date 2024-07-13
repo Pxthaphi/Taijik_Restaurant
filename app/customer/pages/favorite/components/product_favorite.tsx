@@ -3,35 +3,56 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { PostgrestError } from "@supabase/supabase-js";
 import Link from "next/link";
+import { getUserID } from "@/app/auth/getUserID";
 
-// Define the Product interface
 interface Product {
   Product_ID: number;
   Product_Name: string;
   Product_Detail: string;
   Product_Price: number;
-  Product_Image: string; // Added Product_Image field
+  Product_Image: string;
 }
 
-export default function Product_Hot() {
+export default function Product_Favorite() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const userID = getUserID();
 
-  // Function to fetch products from Supabase
-  async function fetchProducts() {
+  async function fetchFavorite() {
     try {
-      // Fetch necessary columns including Product_Image
-      const { data, error } = await supabase
-        .from("products")
-        .select(
-          "Product_ID, Product_Name, Product_Detail, Product_Price, Product_Image"
-        );
-
-      if (error) {
-        throw error;
+      const { data: favoriteData, error: favoriteError } = await supabase
+        .from("favorite")
+        .select("Favorite_ID, Product_ID, User_ID")
+        .eq("User_ID", userID);
+  
+      if (favoriteError) {
+        throw favoriteError;
+      }
+  
+      if (favoriteData && favoriteData.length > 0) {
+        const productPromises = favoriteData.map(async (favorite) => {
+          const ProductID = Number(favorite.Product_ID);
+  
+          const { data: productsData, error: productsError } = await supabase
+            .from("products")
+            .select(
+              "Product_ID, Product_Name, Product_Detail, Product_Price, Product_Image"
+            )
+            .eq("Product_ID", ProductID);
+  
+          if (productsError) {
+            throw productsError;
+          }
+  
+          return productsData;
+        });
+  
+        const productsArray = await Promise.all(productPromises);
+        const allProducts = productsArray.flat();
+        setProducts(allProducts as Product[]);
       } else {
-        setProducts(data as Product[]);
+        setProducts([]);
       }
     } catch (error) {
       setError((error as PostgrestError).message);
@@ -39,24 +60,24 @@ export default function Product_Hot() {
       setLoading(false);
     }
   }
+  
 
   useEffect(() => {
-    fetchProducts();
-
-    const channel = supabase
-      .channel("realtime-products")
+    fetchFavorite();
+    const channelFavorite = supabase
+      .channel("realtime-productsFavorite")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "products" },
+        { event: "*", schema: "public", table: "favorite" },
         (payload) => {
           console.log("Change received!", payload);
-          fetchProducts();
+          fetchFavorite();
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(channelFavorite);
     };
   }, [supabase]);
 
@@ -91,7 +112,7 @@ export default function Product_Hot() {
   }
 
   if (products.length === 0) {
-    return <p>No products available</p>;
+    return <p className="mx-2 pt-5 font-DB_v4">ไม่พบเมนูอาหารที่คุณถูกใจ เพิ่มเมนูโปรดของคุณเลย!!</p>;
   }
 
   return (

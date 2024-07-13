@@ -1,22 +1,26 @@
 "use client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useDropzone, FileRejection } from "react-dropzone";
 import Swal from "sweetalert2";
 import Link from "next/link";
 import { Input } from "@nextui-org/input";
+import { Textarea } from "@nextui-org/input";
+import { Select, SelectItem, Avatar } from "@nextui-org/react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import Product_type from "./data";
 
 export default function Add_Product() {
   const [menuName, setMenuName] = useState("");
   const [price, setPrice] = useState("");
-  const [selectedType, setSelectedType] = useState("1");
+  const [P_Detail, setP_Detail] = useState("");
+  const [selectedType, setSelectedType] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [productID, setProductID] = useState<number | null>(null);
+  const productTypes = Product_type(); // Use the product types from the component
   const router = useRouter();
 
-  const P_Detail = "หมู ไก่ ทะเล รวมมิตร";
   const P_Status = 1;
 
   useEffect(() => {
@@ -152,9 +156,10 @@ export default function Add_Product() {
       // Clear form fields after successful submission
       setMenuName("");
       setPrice("");
+      setP_Detail("");
       setFile(null);
       setPreview(null);
-      setSelectedType("1");
+      setSelectedType("");
       setProductID((prevID) => (prevID !== null ? prevID + 1 : null)); // Increment productID for the next submission
     } catch (error) {
       Swal.fire({
@@ -255,7 +260,7 @@ export default function Add_Product() {
             label="ราคาสินค้า"
             placeholder="0.00"
             labelPlacement="outside"
-            className="font-DB_Med"
+            className="my-5 font-DB_Med"
             startContent={
               <div className="pointer-events-none flex items-center">
                 <span className="text-default-400 text-small">฿</span>
@@ -265,7 +270,66 @@ export default function Add_Product() {
             onChange={(e) => setPrice(e.target.value)}
           />
 
-          <hr className="h-px my-2 bg-gray-100 border-0 pt-1 rounded-full mt-6"></hr>
+          <Textarea
+            labelPlacement="outside"
+            label="รายละเอียดสินค้า"
+            variant="flat"
+            placeholder="เช่น หมู ไก่ ทะเล"
+            value={P_Detail}
+            onChange={(e) => setP_Detail(e.target.value)}
+            className="my-5 font-DB_Med"
+            classNames={{
+              base: "max-w-full",
+              input: "resize-y min-h-[40px]",
+            }}
+          />
+
+          <Select
+            items={productTypes}
+            label="ประเภทเมนูอาหาร"
+            placeholder="กรุณาเลือกประเภทเมนูอาหาร"
+            labelPlacement="outside"
+            onChange={(e) => setSelectedType(e.target.value)}
+            value={selectedType}
+            className="py-5 font-DB_Med"
+            classNames={{
+              base: "max-w-full",
+              trigger: "h-12",
+            }}
+            renderValue={(items) => {
+              return items.map((item) => (
+                <div key={item.key} className="flex items-center gap-2">
+                  <Avatar
+                    alt={item.data!.Type_Name}
+                    className="flex-shrink-0"
+                    size="sm"
+                    src={item.data!.Type_Icon}
+                  />
+                  <div className="flex flex-col">
+                    <span>{item.data!.Type_Name}</span>
+                  </div>
+                </div>
+              ));
+            }}
+          >
+            {(Type_P) => (
+              <SelectItem key={Type_P.Type_ID} textValue={Type_P.Type_Name}>
+                <div className="flex gap-2 items-center">
+                  <Avatar
+                    alt={Type_P.Type_Name}
+                    className="flex-shrink-0"
+                    size="sm"
+                    src={Type_P.Type_Icon}
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-small">{Type_P.Type_Name}</span>
+                  </div>
+                </div>
+              </SelectItem>
+            )}
+          </Select>
+
+          {/* <hr className="h-px my-2 bg-gray-100 border-0 pt-1 rounded-full mt-6"></hr> */}
         </section>
       </main>
 
