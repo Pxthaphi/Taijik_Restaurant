@@ -3,33 +3,77 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { PostgrestError } from "@supabase/supabase-js";
 
-// Define the Product interface
-interface Product {
+// Define the OrderProduct interface
+interface OrderProduct {
   OrderP_ID: number;
+  Order_ID: string;
   Product_ID: number;
-  Product_Name: string;
+  Product_Qty: number;
+  Product_Size: string;
+  Product_Meat: number;
+  Product_Option: number;
   Product_Detail: string;
+  Total_Price: number;
+  Product_Name: string;
   Product_Price: number;
-  Product_Image: string; // Added Product_Image field
+  Product_Image: string;
 }
 
 export default function History_Order() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [orderProducts, setOrderProducts] = useState<OrderProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function fetchHistoryProducts() {
+  async function fetchHistoryOrderProducts() {
     try {
-      // Fetch necessary columns including Product_Image
+      // Fetch necessary columns by joining orders, order_products, and products
       const { data, error } = await supabase
-        .from("products")
-        .select("*, order_products!inner(*)")
-        .in("order_products.Product_ID", [5])
+        .from("order_products")
+        .select(`
+          OrderP_ID,
+          Order_ID,
+          Product_ID,
+          Product_Qty,
+          Product_Size,
+          Product_Meat,
+          Product_Option,
+          Product_Detail,
+          Total_Price,
+          orders (
+            Order_Status
+          ),
+          products (
+            Product_Name,
+            Product_Price,
+            Product_Image
+          )
+        `);
 
       if (error) {
         throw error;
       } else {
-        setProducts(data as Product[]);
+        // Flatten the nested properties and ensure products exist
+        const flattenedData = data
+          .filter((item: any) => item.orders && item.orders.Order_Status === 4)
+          .map((item: any) => {
+            const product = item.products || {};
+            return {
+              OrderP_ID: item.OrderP_ID,
+              Order_ID: item.Order_ID,
+              Product_ID: item.Product_ID,
+              Product_Qty: item.Product_Qty,
+              Product_Size: item.Product_Size,
+              Product_Meat: item.Product_Meat,
+              Product_Option: item.Product_Option,
+              Product_Detail: item.Product_Detail,
+              Total_Price: item.Total_Price,
+              Product_Name: product.Product_Name,
+              Product_Price: product.Product_Price,
+              Product_Image: product.Product_Image
+            };
+          });
+
+        setOrderProducts(flattenedData as OrderProduct[]);
       }
     } catch (error) {
       setError((error as PostgrestError).message);
@@ -39,31 +83,13 @@ export default function History_Order() {
   }
 
   useEffect(() => {
-    fetchHistoryProducts();
+    fetchHistoryOrderProducts();
   }, []); // Run once on component mount
 
   if (loading) {
     return (
       <div className="text-center">
-        <div role="status">
-          <svg
-            aria-hidden="true"
-            className="inline w-8 h-8 text-gray-200 animate-spin dark:text-gray-600 fill-orange-400"
-            viewBox="0 0 100 101"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
-              fill="currentColor"
-            />
-            <path
-              d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
-              fill="currentFill"
-            />
-          </svg>
-          <span className="sr-only">Loading...</span>
-        </div>
+        <LoadingSpinner />
       </div>
     );
   }
@@ -72,21 +98,46 @@ export default function History_Order() {
     return <p>Error: {error}</p>;
   }
 
-  if (products.length === 0) {
+  if (orderProducts.length === 0) {
     return <p className="font-DB_v4">ไม่พบการสั่งอาหาร ลองสั่งเลย!!</p>;
   }
 
   return (
     <div className="flex flex-row gap-4 overflow-x-auto">
-      {products.map((product) => (
-        <ProductCard key={product.Product_ID} product={product} />
+      {orderProducts.map((orderProduct) => (
+        <ProductCard key={orderProduct.OrderP_ID} orderProduct={orderProduct} />
       ))}
     </div>
   );
 }
 
+// LoadingSpinner component
+function LoadingSpinner() {
+  return (
+    <div role="status">
+      <svg
+        aria-hidden="true"
+        className="inline w-8 h-8 text-gray-200 animate-spin dark:text-gray-600 fill-orange-400"
+        viewBox="0 0 100 101"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
+          fill="currentColor"
+        />
+        <path
+          d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
+          fill="currentFill"
+        />
+      </svg>
+      <span className="sr-only">Loading...</span>
+    </div>
+  );
+}
+
 // ProductCard component
-function ProductCard({ product }: { product: Product }) {
+function ProductCard({ orderProduct }: { orderProduct: OrderProduct }) {
   return (
     <div className="flex-shrink-0 w-52">
       <div className="relative rounded-xl overflow-hidden w-full md:w-1/2 lg:w-1/2 xl:w-1/2">
@@ -108,18 +159,18 @@ function ProductCard({ product }: { product: Product }) {
 
         <img
           className="w-full h-24 object-cover"
-          src={product.Product_Image} // Use Product_Image field as image source
-          alt={product.Product_Name}
+          src={orderProduct.Product_Image} // Use Product_Image field as image source
+          alt={orderProduct.Product_Name}
         />
         <div className="px-3 py-2">
-          <div className="font-DB_Med text-lg">{product.Product_Name}</div>
+          <div className="font-DB_Med text-lg">{orderProduct.Product_Name}</div>
           <div className="font-DB_Med text-xs mb-1 text-gray-500">
-            {product.Product_Detail}
+            {orderProduct.Product_Detail}
           </div>
           <div className="flex justify-between pt-2">
             <p className="text-gray-500 text-sm font-DB_Med my-0.5">15 นาที</p>
             <p className="text-base font-DB_Med text-green-600">
-              ฿{product.Product_Price}
+              ฿{orderProduct.Product_Price}
             </p>
           </div>
         </div>

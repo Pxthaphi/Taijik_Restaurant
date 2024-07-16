@@ -6,6 +6,7 @@ import { PostgrestError } from "@supabase/supabase-js";
 import Link from "next/link";
 import { getUserID } from "@/app/auth/getUserID";
 import { CheckboxGroup, Checkbox, RadioGroup, Radio } from "@nextui-org/react";
+import Swal from "sweetalert2";
 
 interface PageProps {
   params: {
@@ -41,9 +42,11 @@ export default function Product_Detail({ params }: PageProps) {
   const [selectedSize, setSelectedSize] = useState<number>(0);
   const [selectedMeat, setSelectedMeat] = useState<number | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
+  const [sizeProduct, setSize] = useState("ธรรมดา");
+  const [productDetail, setProductDetail] = useState("");
+  const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [quantity, setQuantity] = useState(1);
 
   // Define state to hold the total price
   const [totalPrice, setTotalPrice] = useState<number>(0);
@@ -150,11 +153,36 @@ export default function Product_Detail({ params }: PageProps) {
   }
 
   async function pickMenu() {
+    if (!sizeProduct) {
+      Swal.fire({
+        icon: "error",
+        title: "ผิดพลาด",
+        text: "กรุณาเลือกขนาดที่ต้องการ",
+      });
+      return;
+    }
+    if (!selectedMeat) {
+      Swal.fire({
+        icon: "error",
+        title: "ผิดพลาด",
+        text: "กรุณาเลือกเนื้อสัตว์ที่ต้องการ",
+      });
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from("cart")
         .insert([
-          { User_ID: userID, Product_ID: params.slug, Product_Qty: quantity },
+          {
+            User_ID: userID,
+            Product_ID: params.slug,
+            Product_Qty: quantity,
+            Product_Size: sizeProduct,
+            Product_Meat: selectedMeat,
+            Product_Option: selectedOptions,
+            Product_Detail: productDetail,
+            Total_Price: totalPrice,
+          },
         ])
         .select();
 
@@ -169,9 +197,9 @@ export default function Product_Detail({ params }: PageProps) {
     }
   }
 
-  console.log("UserID (Product page) : ", userID);
-  console.log("Product_ID (Product page) : ", params.slug);
-  console.log("Product_Qty (Product page) : ", quantity);
+  // console.log("UserID (Product page) : ", userID);
+  // console.log("Product_ID (Product page) : ", params.slug);
+  // console.log("Product_Qty (Product page) : ", quantity);
 
   async function checkProductFavorite() {
     try {
@@ -240,6 +268,19 @@ export default function Product_Detail({ params }: PageProps) {
   useEffect(() => {
     checkProductFavorite(); // Re-check favorite status whenever isAnimation changes
   }, [isAnimation]);
+
+  useEffect(() => {
+    if (selectedSize == 10) {
+      setSize("พิเศษ");
+    } else {
+      setSize("ธรรมดา");
+    }
+    // console.log("size: ", sizeProduct);
+    // console.log("Meat: ", selectedMeat);
+    // console.log("Option: ", selectedOptions);
+    // console.log("Detail: ", productDetail);
+    console.log("Total Price: ", totalPrice);
+  }, [sizeProduct, selectedSize, selectedMeat, selectedOptions, productDetail, totalPrice]);
 
   if (loading) {
     return (
@@ -486,7 +527,10 @@ export default function Product_Detail({ params }: PageProps) {
                     color="success"
                   >
                     {meats.map((meat) => (
-                      <div key={meat.Meat_ID} className="flex items-center justify-between pt-2">
+                      <div
+                        key={meat.Meat_ID}
+                        className="flex items-center justify-between pt-2"
+                      >
                         <Radio
                           value={`${meat.Meat_ID}`}
                           className="flex-grow font-DB_v4"
@@ -515,7 +559,10 @@ export default function Product_Detail({ params }: PageProps) {
                 color="success"
               >
                 {options.map((option) => (
-                  <div key={option.Option_ID} className="flex items-center justify-between pt-2">
+                  <div
+                    key={option.Option_ID}
+                    className="flex items-center justify-between pt-2"
+                  >
                     <Checkbox
                       value={`${option.Option_ID}`}
                       className="flex-grow font-DB_v4"
@@ -538,6 +585,8 @@ export default function Product_Detail({ params }: PageProps) {
                 id="textarea-label"
                 className="mt-5 py-4 px-4 block w-full border border-gray-300 bg-gray-50 rounded-lg text-sm focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none"
                 placeholder="เช่น ไม่เอาผัก"
+                value={productDetail}
+                onChange={(e) => setProductDetail(e.target.value)}
               />
             </div>
           </section>

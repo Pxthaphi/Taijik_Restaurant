@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import {
   Modal,
   ModalContent,
@@ -10,15 +10,28 @@ import {
 } from "@nextui-org/react";
 import { Textarea } from "@nextui-org/input";
 import Swal from "sweetalert2";
+import { supabase } from "@/lib/supabase";
 
 interface ModalCancelOrderProps {
   setIsModalOpen: (isOpen: boolean) => void;
+  orderId: string; // Receive orderId prop
 }
 
 export default function ModalCancelOrder({
   setIsModalOpen,
+  orderId,
 }: ModalCancelOrderProps) {
-  const handleConfirmCancel = () => {
+  const [orderDetail, setOrderDetail] = useState("");
+
+  const handleConfirmCancel = async () => {
+    if(!orderDetail){
+      Swal.fire({
+        icon: "error",
+        title: "ผิดพลาด",
+        text: "กรุณาป้อนเหตุผลที่ต้องการจะยกเลิกการสั่งเมนูอาหาร",
+      });
+      return;
+    }
     setIsModalOpen(false); // Close the modal
     Swal.fire({
       title: "ต้องการที่จะยกเลิก??",
@@ -28,16 +41,43 @@ export default function ModalCancelOrder({
       confirmButtonColor: "#32C638",
       cancelButtonColor: "#d33",
       confirmButtonText: "ต้องการยกเลิก",
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        Swal.fire({
-          title: "ยกเลิกคำสั่งซื้อสำเร็จ!",
-          text: "ขอบคุณที่ใช้บริการร้านใต้จิกค่ะ.",
-          icon: "success",
-          showConfirmButton: false,
-          timer: 1000,
-        });
-        // setStatus_order(5);
+        try {
+          const { data, error } = await supabase
+            .from("orders")
+            .update({ Order_Status: 5, Order_Detail: orderDetail })
+            .eq("Order_ID", orderId);
+
+          if (error) {
+            throw error;
+          }
+
+          // Delete the entry from the queue table
+          const { error: queueError } = await supabase
+            .from("queue")
+            .delete()
+            .eq("Order_ID", orderId);
+
+          if (queueError) {
+            throw queueError;
+          }
+
+          Swal.fire({
+            title: "ยกเลิกคำสั่งซื้อสำเร็จ!",
+            text: "ขอบคุณที่ใช้บริการร้านใต้จิกค่ะ.",
+            icon: "success",
+            showConfirmButton: false,
+            timer: 1000,
+          });
+        } catch (error) {
+          console.log("Error cancelling order:", error);
+          Swal.fire({
+            title: "เกิดข้อผิดพลาด!",
+            text: "ไม่สามารถยกเลิกคำสั่งซื้อได้ในขณะนี้",
+            icon: "error",
+          });
+        }
       }
     });
   };
@@ -60,7 +100,7 @@ export default function ModalCancelOrder({
                 ยกเลิกคำสั่งซื้อ
               </h2>
               <p className="text-sm text-gray-500 font-DB_v4">
-                กรุณาระบุข้อความเหตุผลที่ยกเลิกคำสั่งซื้อ??
+                กรุณาระบุข้อความเหตุผลที่ยกเลิกคำสั่งซื้อ
               </p>
             </ModalHeader>
             <ModalBody>
@@ -71,6 +111,8 @@ export default function ModalCancelOrder({
                 labelPlacement="outside"
                 placeholder="ระบุอะไรสักอย่าง......."
                 className="max-w-sm font-DB_Med"
+                value={orderDetail}
+                onChange={(e) => setOrderDetail(e.target.value)}
               />
             </ModalBody>
             <ModalFooter>

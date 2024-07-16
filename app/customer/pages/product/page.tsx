@@ -59,7 +59,7 @@ export default function Show_Product() {
   }, [userID]);
 
   const goBack = () => {
-    router.back();
+    router.push("../")
   };
 
   return (

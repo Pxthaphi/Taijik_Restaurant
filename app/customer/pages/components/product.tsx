@@ -11,6 +11,7 @@ interface Product {
   Product_Detail: string;
   Product_Price: number;
   Product_Image: string; // Added Product_Image field
+  Product_Status: number;
 }
 
 export default function Product() {
@@ -25,8 +26,10 @@ export default function Product() {
       const { data, error } = await supabase
         .from("products")
         .select(
-          "Product_ID, Product_Name, Product_Detail, Product_Price, Product_Image"
-        );
+          "Product_ID, Product_Name, Product_Detail, Product_Price, Product_Image, Product_Status"
+        )
+        .neq("Product_Status", 3)
+        .order("Product_Status", { ascending: true });
 
       if (error) {
         throw error;
@@ -105,10 +108,26 @@ export default function Product() {
 
 // ProductCard component
 function ProductCard({ product }: { product: Product }) {
-  return (  
+  if (product.Product_Status === 3) {
+    return null; // Do not render products with Product_Status = 3
+  }
+
+  return (
     <div className="w-full items-center">
-      <div className="relative rounded-xl overflow-hidden shadow-lg w-full md:w-1/2 lg:w-1/2 xl:w-1/2">
-        <Link href={`/customer/pages/product/${product.Product_ID}`}>
+      <div
+        className={`relative rounded-xl overflow-hidden shadow-lg w-full md:w-1/2 lg:w-1/2 xl:w-1/2 ${
+          product.Product_Status === 2
+            ? "bg-gray-200 opacity-50 pointer-events-none"
+            : ""
+        }`}
+      >
+        <Link
+          href={
+            product.Product_Status === 1
+              ? `/customer/pages/product/${product.Product_ID}`
+              : "#"
+          }
+        >
           {/* Star Rating */}
           <div className="absolute top-0 right-0 mt-2 mr-2">
             <span className="inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-medium text-gray-500 bg-white rounded-md">

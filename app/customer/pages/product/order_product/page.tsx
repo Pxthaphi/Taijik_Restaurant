@@ -2,19 +2,46 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import dayjs from "dayjs";
+import { Dayjs } from "dayjs";
 import PickerWithButtonField from "./components/timepicker";
 import { supabase } from "@/lib/supabase";
 import { getUserID } from "@/app/auth/getUserID";
+import Swal from "sweetalert2";
 
 interface Product {
-  User_ID: string;
   Product_ID: string;
-  Product_Qty: number;
   Product_Name: string;
   Product_Detail: string;
   Product_Price: number;
   Product_Image: string;
+}
+
+interface CartItem {
+  User_ID: string;
+  Product_ID: string;
+  Product_Qty: number;
+  Product_Size: string;
+  Product_Meat: string;
+  Product_Option: string[];
+  Product_Detail: string;
+  Total_Price: number;
+}
+
+interface Meat {
+  Meat_ID: string;
+  Meat_Name: string;
+}
+
+interface FoodOption {
+  Option_ID: string;
+  Option_Name: string;
+}
+
+interface MergedProduct extends CartItem {
+  Product_Name: string;
+  Product_Image: string;
+  Meat_Name: string;
+  Option_Names: string[];
 }
 
 export default function Order_Product() {
@@ -24,25 +51,59 @@ export default function Order_Product() {
   }>({});
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [selectedTimeDisplay, setSelectedTimeDisplay] = useState<string>("");
-  const [products, setProducts] = useState<Product[]>([]);
-  const Order_ID = "TK-0000-11111";
+  const [optionOrder, setOptionOrder] = useState<string>("");
+  const [orderDetail, setOrderDetail] = useState<string>("");
+  const [products, setProducts] = useState<MergedProduct[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [orderIDCounter, setOrderIDCounter] = useState<number>(1); // State for Order_ID counter
+  const promotionID = 1; // replace with actual logic to get
+
+  useEffect(() => {
+    const fetchLastOrderID = async () => {
+      try {
+        const { data: lastOrder, error } = await supabase
+          .from("orders")
+          .select("Order_ID")
+          .order("Order_ID", { ascending: false })
+          .limit(1);
+
+        if (error) {
+          throw error;
+        }
+
+        if (lastOrder && lastOrder.length > 0) {
+          const lastOrderID = parseInt(
+            lastOrder[0]?.Order_ID?.split("-")[1] || "0"
+          );
+          setOrderIDCounter(lastOrderID + 1);
+        }
+      } catch (error) {
+        console.error("Error fetching last Order_ID: ", error);
+      }
+    };
+
+    fetchLastOrderID();
+  }, []);
+
+  // Generate Order_ID with leading zeros
+  const Order_ID = `TK-${orderIDCounter.toString().padStart(8, "0")}`;
 
   useEffect(() => {
     const fetchProductsFromCart = async () => {
       try {
         const { data: cartData, error: cartError } = await supabase
           .from("cart")
-          .select("User_ID, Product_ID, Product_Qty")
+          .select(
+            "User_ID, Product_ID, Product_Qty, Product_Size, Product_Meat, Product_Option, Product_Detail, Total_Price"
+          )
           .eq("User_ID", getUserID());
 
         if (cartError) throw cartError;
 
-        // Check if cartData is empty
-      if (cartData.length === 0) {
-        // Navigate back to product page
-        router.push('../product');
-        return;
-      }
+        if (cartData.length === 0) {
+          router.push("../product");
+          return;
+        }
 
         const initialQuantityMap: { [productId: string]: number } = {};
         cartData.forEach((item) => {
@@ -51,24 +112,69 @@ export default function Order_Product() {
         setQuantityMap(initialQuantityMap);
 
         const productIDs = cartData.map((item) => item.Product_ID);
+        const meatIDs = cartData.map((item) => item.Product_Meat);
+        const optionIDs = cartData.flatMap((item) => item.Product_Option);
 
         const { data: productsData, error: productsError } = await supabase
           .from("products")
-          .select(
-            "Product_ID, Product_Name, Product_Detail, Product_Price, Product_Image"
-          )
+          .select("Product_ID, Product_Name, Product_Image")
           .in("Product_ID", productIDs);
 
         if (productsError) throw productsError;
 
-        setProducts(productsData as Product[]);
+        const { data: meatsData, error: meatsError } = await supabase
+          .from("product_meat")
+          .select("*")
+          .in("Meat_ID", meatIDs)
+          .order("Meat_ID");
+
+        if (meatsError) throw meatsError;
+
+        const { data: optionsData, error: optionsError } = await supabase
+          .from("product_option")
+          .select("*")
+          .in("Option_ID", optionIDs)
+          .order("Option_ID");
+
+        if (optionsError) throw optionsError;
+
+        const mergedProducts = cartData.map((cartItem) => {
+          const productData = productsData.find(
+            (product) => product.Product_ID === cartItem.Product_ID
+          );
+          const meatData = meatsData.find(
+            (meat) => meat.Meat_ID === cartItem.Product_Meat
+          );
+          const optionNames = cartItem.Product_Option.map(
+            (optionId: string) =>
+              optionsData.find((option) => option.Option_ID === optionId)
+                ?.Option_Name || ""
+          );
+
+          return {
+            ...cartItem,
+            Product_Name: productData?.Product_Name || "",
+            Product_Image: productData?.Product_Image || "",
+            Meat_Name: meatData?.Meat_Name || "",
+            Option_Names: optionNames,
+          };
+        });
+
+        setProducts(mergedProducts as MergedProduct[]);
 
         console.log("Cart Data:");
         console.table(cartData);
 
         console.log("Products Data:");
         console.table(productsData);
+
+        console.log("Meats Data:");
+        console.table(meatsData);
+
+        console.log("Options Data:");
+        console.table(optionsData);
       } catch (error) {
+        setError((error as Error).message);
         console.error("Error fetching products: ", error);
       }
     };
@@ -82,18 +188,21 @@ export default function Order_Product() {
         { event: "*", schema: "public", table: "cart" },
         (payload) => {
           console.log("Change received!", payload);
-          fetchProductsFromCart()
+          fetchProductsFromCart();
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel)
+      supabase.removeChannel(channel);
     };
   }, [supabase]);
 
-  const handleCloseTimePicker = () => {
-    console.log("Selected time:", selectedTimeDisplay);
+  const handleTimeChange = (newValue: Dayjs | null) => {
+    if (newValue) {
+      setSelectedTimeDisplay(newValue.format("HH:mm"));
+      console.log("Selected time:", newValue.format("HH:mm"));
+    }
   };
 
   const handleOptionSelect = (option: string) => {
@@ -160,12 +269,132 @@ export default function Order_Product() {
     let totalPrice = 0;
     products.forEach((product) => {
       const quantity = quantityMap[product.Product_ID] || 0;
-      totalPrice += product.Product_Price * quantity;
+      totalPrice += product.Total_Price * quantity;
     });
     return totalPrice;
   };
 
-  const goBack = () => router.push('../product');
+  const insetOrder = async () => {
+    // ตรวจสอบข้อมูลที่จำเป็น
+    if (!selectedOption || !selectedTimeDisplay) {
+      Swal.fire({
+        icon: "error",
+        title: "ผิดพลาด",
+        text: "กรุณาเลือกเวลาที่จะมารับ หรือ กินที่ร้านก่อน",
+      });
+      return;
+    }
+
+    // Get current timestamp
+    const now = new Date().toLocaleString("th-TH", {
+      timeZone: "Asia/Bangkok",
+    });
+
+    try {
+      // Insert into orders table
+      const { data: orderData, error: orderError } = await supabase
+        .from("orders")
+        .insert([
+          {
+            Order_ID: Order_ID,
+            User_ID: getUserID(),
+            Order_Datetime: now,
+            Receive_Time: selectedTimeDisplay,
+            Order_Status: 1,
+            Order_Detail: "",
+            Promotion_ID: promotionID,
+            Order_Option: optionOrder,
+          },
+        ])
+        .single();
+
+      if (orderError) {
+        console.error("Error adding product to Order:", orderError.message);
+        return;
+      }
+
+      // Prepare data for order_products
+      const orderProductsData = products.map((product) => ({
+        Order_ID: Order_ID,
+        Product_ID: product.Product_ID,
+        Product_Qty: quantityMap[product.Product_ID] || 0,
+        Product_Size: product.Product_Size || "",
+        Product_Meat: product.Product_Meat || "",
+        Product_Option: product.Product_Option.join(",") || "",
+        Product_Detail: product.Product_Detail || "",
+        Total_Price: product.Total_Price || 0,
+      }));
+
+      // Insert into order_products table
+      const { data: orderProductsInsertData, error: orderProductsInsertError } =
+        await supabase.from("order_products").insert(orderProductsData);
+
+      if (orderProductsInsertError) {
+        console.error(
+          "Error adding products to Order Products:",
+          orderProductsInsertError.message
+        );
+        return;
+      }
+
+      // Prepare data for queue table
+      const queueData = {
+        Order_ID: Order_ID,
+        Queue_Time: now, // Assuming this is the time when the order is queued
+      };
+
+      // Insert into queue table
+      const { data: queueInsertData, error: queueInsertError } = await supabase
+        .from("queue")
+        .insert(queueData)
+        .single();
+
+      if (queueInsertError) {
+        console.error("Error adding order to Queue:", queueInsertError.message);
+        return;
+      }
+
+      // Delete from cart table
+      const { data: cartDeleteData, error: cartDeleteError } = await supabase
+        .from("cart")
+        .delete()
+        .eq("User_ID", getUserID());
+
+      if (cartDeleteError) {
+        console.error("Error deleting cart items:", cartDeleteError.message);
+        return;
+      }
+
+      console.log("Product added to Order successfully:", orderData);
+
+      setOrderIDCounter((prevCounter) => prevCounter + 1);
+
+      Swal.fire({
+        icon: "success",
+        title: "การสั่งซื้อสำเร็จ",
+        text: "คุณสั่งซื้อสินค้าเรียบร้อยแล้ว",
+        showConfirmButton: false,
+        timer: 2000,
+      }).then(() => {
+        window.location.href = `product/order_product/${Order_ID}`;
+      });
+
+    } catch (err) {
+      console.error("Unexpected error:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedOption == "options1") {
+      setOptionOrder("กินที่ร้าน");
+    } else {
+      setOptionOrder("ใส่กล่องกลับบ้าน");
+    }
+    console.log("ตัวเลือก : ", selectedOption);
+    console.log("ตัวเลือกการสั่ง : ", optionOrder);
+  }, [selectedOption, optionOrder]);
+
+  const goBack = () => router.push("../product");
 
   return (
     <>
@@ -206,12 +435,9 @@ export default function Order_Product() {
                   onClick={() => handleOptionSelect("options1")}
                 >
                   <p className="text-base font-DB_v4">กินที่ร้าน</p>
-                  {selectedOption === "options1" && selectedTimeDisplay && (
-                    <p className="text-base font-DB_v4 text-orange-500">
-                      ({selectedTimeDisplay})
-                    </p>
+                  {selectedOption === "options1" && (
+                    <PickerWithButtonField onChange={handleTimeChange} />
                   )}
-                  {selectedOption === "options1" && <PickerWithButtonField />}
                 </button>
                 <button
                   type="button"
@@ -225,12 +451,9 @@ export default function Order_Product() {
                   onClick={() => handleOptionSelect("options2")}
                 >
                   <p className="text-base font-DB_v4">ใส่กล่องกลับบ้าน</p>
-                  {selectedOption === "options2" && selectedTimeDisplay && (
-                    <p className="text-base font-DB_v4 text-orange-500">
-                      ({selectedTimeDisplay})
-                    </p>
+                  {selectedOption === "options2" && (
+                    <PickerWithButtonField onChange={handleTimeChange} />
                   )}
-                  {selectedOption === "options2" && <PickerWithButtonField />}
                 </button>
               </nav>
             </div>
@@ -250,14 +473,21 @@ export default function Order_Product() {
                 </div>
                 <div className="w-1/2 ms-6 pt-1">
                   <h3 className="text-lg font-DB_Med text-gray-700">
-                    {product.Product_Name}
+                    {product.Product_Name} ({product.Meat_Name})
                   </h3>
-                  <p className="text-sm text-gray-500 font-DB_v4">
-                    {product.Product_Detail}
-                  </p>
+                  {product.Option_Names && (
+                    <p className="text-sm text-gray-500 font-DB_v4">
+                      ตัวเลือกเพิ่มเติม : {product.Option_Names}
+                    </p>
+                  )}
+                  {product.Product_Detail != "" && (
+                    <p className="text-sm text-gray-500 font-DB_v4">
+                      รายละเอียดเพิ่มเติม : {product.Product_Detail}
+                    </p>
+                  )}
                   <div className="flex justify-between mt-4 gap-x-6">
                     <h3 className="text-lg font-DB_Med text-green-600 pt-2">
-                      ฿{product.Product_Price}
+                      ฿{product.Total_Price}
                     </h3>
                     <div className="ms-12 pt-1">
                       {/* Input Number */}
@@ -376,11 +606,11 @@ export default function Order_Product() {
           {products.map((product) => (
             <div key={product.Product_ID} className="flex justify-between mt-3">
               <div className="text-base text-gray-800 font-DB_Med">
-                {product.Product_Name} x {quantityMap[product.Product_ID]}
+                {product.Product_Name} ({product.Meat_Name}) (เพิ่ม{" "}
+                {product.Option_Names}) x {quantityMap[product.Product_ID]}
               </div>
               <div className="text-base text-gray-800 font-DB_Med">
-                ฿
-                {product.Product_Price * (quantityMap[product.Product_ID] || 0)}
+                ฿{product.Total_Price * (quantityMap[product.Product_ID] || 0)}
                 .00
               </div>
             </div>
@@ -405,9 +635,10 @@ export default function Order_Product() {
 
       <footer className="mt-12 pt-16">
         <div className="flex justify-center fixed inset-x-0 w-full h-16 max-w-lg -translate-x-1/2 bottom-4 left-1/2">
-          <Link
-            href={`order_product/${Order_ID}`}
+          <button
+            // href={`order_product/${Order_ID}`}
             className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white rounded-full py-3 px-12 text-lg font-DB_Med"
+            onClick={insetOrder}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -422,7 +653,7 @@ export default function Order_Product() {
               />
             </svg>
             สั่งอาหารเลย
-          </Link>
+          </button>
         </div>
       </footer>
     </>

@@ -1,8 +1,6 @@
-"use client";
 import * as React from "react";
 import { Dayjs } from "dayjs";
 import dayjs from "dayjs";
-import Button from "@mui/material/Button";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import {
@@ -59,7 +57,6 @@ function ButtonField(props: ButtonFieldProps) {
   );
 }
 
-
 function ButtonTimePicker(
   props: Omit<MobileTimePickerProps<Dayjs>, "open" | "onOpen" | "onClose">
 ) {
@@ -83,10 +80,19 @@ function ButtonTimePicker(
   );
 }
 
-export default function PickerWithButtonField() {
+interface PickerWithButtonFieldProps {
+  onChange: (newValue: Dayjs | null) => void;
+}
+
+export default function PickerWithButtonField(props: PickerWithButtonFieldProps) {
   const [value, setValue] = React.useState<Dayjs | null>(null);
   const MinTime = dayjs().set("hour", 9).startOf("hour");
   const MaxTime = dayjs().set("hour", 22).startOf("hour");
+
+  const handleChange = (newValue: Dayjs | null) => {
+    setValue(newValue);
+    props.onChange(newValue); // Send selected time back to parent component
+  };
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -96,7 +102,7 @@ export default function PickerWithButtonField() {
         defaultValue={MinTime}
         minTime={MinTime}
         maxTime={MaxTime}
-        onChange={(newValue) => setValue(newValue)}
+        onChange={handleChange} // Call handleChange when a new time is selected
       />
     </LocalizationProvider>
   );
