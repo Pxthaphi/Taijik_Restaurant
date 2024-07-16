@@ -20,7 +20,7 @@ export default function OptionUsers({ userId }: { userId: string }) {
   const handleDelete = async () => {
     Swal.fire({
       title: "แน่ใจใช่มั้ย ?",
-      text: "หากลบ จะไม่สามารถกู้ข้อมูลกลับมาได้อีก!",
+      text: "หากเปลี่ยนสถานะ จะไม่สามารถกู้ข้อมูลกลับมาได้อีก!",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#4CBB17",
@@ -33,7 +33,7 @@ export default function OptionUsers({ userId }: { userId: string }) {
           // Delete the record from the database
           const { error: deleteError } = await supabase
             .from("users")
-            .delete()
+            .update({ User_Ticket: 0 })
             .eq("User_ID", userId);
 
           if (deleteError) {
@@ -42,8 +42,8 @@ export default function OptionUsers({ userId }: { userId: string }) {
 
           Swal.fire({
             icon: "success",
-            title: "ลบสำเร็จ",
-            text: "ลบข้อมูลผู้ใช้สำเร็จ กรุณารอสักครู่",
+            title: "ทำรายการสำเร็จ",
+            text: "เปลี่ยนสถานะผู้ใช้สำเร็จ กรุณารอสักครู่",
             timer: 2000,
             showConfirmButton: false,
           }).then(() => {
@@ -75,28 +75,18 @@ export default function OptionUsers({ userId }: { userId: string }) {
         </Button>
       </DropdownTrigger>
       <DropdownMenu variant="faded" aria-label="Dropdown menu with description">
-        <DropdownSection title="" showDivider>
-          <DropdownItem
-            key="edit"
-            description="คุณสามารถแก้ไขข้อมูลผู้ใช้ได้"
-            startContent={<EditDocumentIcon className={iconClasses} />}
-            href={`user/pages/EditUser/${userId}`}
-          >
-            แก้ไขข้อมูลผู้ใช้
-          </DropdownItem>
-        </DropdownSection>
         <DropdownSection title="Danger zone">
           <DropdownItem
             key="delete"
             className="text-danger"
             color="danger"
-            description="หากลบจะไม่สามารถนำกลับมาได้"
+            description="หากเปลี่ยนแล้วจะไม่สามารถนำกลับมาได้"
             onClick={handleDelete}
             startContent={
               <DeleteDocumentIcon className={cn(iconClasses, "text-danger")} />
             }
           >
-            ลบผู้ใช้
+            ลบสถานะ Blacklist
           </DropdownItem>
         </DropdownSection>
       </DropdownMenu>

@@ -90,7 +90,7 @@ export default function Users() {
   }
 
   if (users.length === 0) {
-    return <p>ไม่พบผู้ใช้ กรุณาเพิ่มผู้ใช้</p>;
+    return <p>ไม่พบผู้ใช้ที่ติด Blacklist</p>;
   }
 
   return (
