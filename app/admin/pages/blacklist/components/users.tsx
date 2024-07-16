@@ -24,6 +24,7 @@ export default function Users() {
         .from("users")
         .select("*")
         .eq("User_Type", "customer")
+        .eq("User_Ticket", 3)
         .order("User_ID");
 
       if (error) {
@@ -132,21 +133,6 @@ function UserCard({ user }: { user: User }) {
             <div className="flex justify-between items-center mt-2">
               <p className="text-sm font-DB_Med">สถานะ Blacklist</p>
               <p className="text-base">
-                {user.User_Ticket == 0 && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-green-100 text-green-800">
-                    ไม่ติด
-                  </span>
-                )}
-                {user.User_Ticket == 1 && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-orange-100 text-orange-800">
-                    เสี่ยงปานกลาง
-                  </span>
-                )}
-                {user.User_Ticket == 2 && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-red-100 text-red-800">
-                    เสี่ยงมาก
-                  </span>
-                )}
                 {user.User_Ticket == 3 && (
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-orange-500 text-white">
                     ติด Blacklist
