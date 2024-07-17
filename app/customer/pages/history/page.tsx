@@ -18,7 +18,7 @@ interface ProductDetail {
   Product_Qty: number;
   Product_Size: string;
   Meat_Name: string;
-  Option_Name: string;
+  Option_Names: string[]; // Updated to be an array
   Total_Price: number;
 }
 
@@ -35,6 +35,7 @@ export default function HistoryOrder() {
     orders: [] as Order[],
     loading: true,
     error: null as string | null,
+    orderStatus: 1, // Initial order status, adjust as needed
   });
 
   const handleTabChange = (key: any) => {
@@ -48,7 +49,7 @@ export default function HistoryOrder() {
       case "processing":
         return 2;
       case "completed":
-        return 4;
+        return [3, 4];
       case "cancelled":
         return 5;
       default:
@@ -59,15 +60,31 @@ export default function HistoryOrder() {
   const fetchOrders = async (status: string) => {
     try {
       const userID = await getUserID();
-      const { data: orders, error: ordersError } = await supabase
-        .from("orders")
-        .select("Order_ID, Order_Datetime, Order_Status") // Explicitly select required columns
-        .eq("User_ID", userID)
-        .eq("Order_Status", getStatus(status));
+      const statusValues = getStatus(status);
 
+      let ordersQuery = supabase
+        .from("orders")
+        .select("Order_ID, Order_Datetime, Order_Status")
+        .eq("User_ID", userID);
+
+      if (Array.isArray(statusValues)) {
+        ordersQuery = ordersQuery.in("Order_Status", statusValues);
+      } else {
+        ordersQuery = ordersQuery.eq("Order_Status", statusValues);
+      }
+
+      const { data: orders, error: ordersError } = await ordersQuery;
       if (ordersError) throw ordersError;
 
-      console.log("Fetched orders:", orders); // Log fetched orders
+      if (!orders || orders.length === 0) {
+        setState((prevState) => ({
+          ...prevState,
+          orders: [],
+          orderStatus: 0,
+          loading: false,
+        }));
+        return;
+      }
 
       const orderIds = orders.map((order: FetchedOrder) => order.Order_ID);
 
@@ -100,17 +117,27 @@ export default function HistoryOrder() {
           const meat = productMeats.find(
             (m: any) => m.Meat_ID === op.Product_Meat
           );
-          const option = productOptions.find(
-            (o: any) => o.Option_ID === op.Product_Option
+
+          const optionNames = op.Product_Option.map(
+            (optionID: bigint, index: number) => {
+              const option = productOptions.find(
+                (o: any) => o.Option_ID === optionID
+              );
+              return option
+                ? index === 0
+                  ? option.Option_Name
+                  : `, ${option.Option_Name}`
+                : "No option";
+            }
           );
 
           return {
-            Product_ID: product.Product_ID,
-            Product_Name: product.Product_Name,
+            Product_ID: product?.Product_ID,
+            Product_Name: product?.Product_Name,
             Product_Qty: op.Product_Qty,
             Product_Size: op.Product_Size,
             Meat_Name: meat ? meat.Meat_Name : "No meat",
-            Option_Name: option ? option.Option_Name : "No option",
+            Option_Names: optionNames,
             Total_Price: op.Total_Price,
           };
         });
@@ -121,11 +148,10 @@ export default function HistoryOrder() {
         };
       });
 
-      console.log("Enriched orders:", enrichedOrders); // Log enriched orders
-
       setState((prevState) => ({
         ...prevState,
         orders: enrichedOrders,
+        orderStatus: enrichedOrders[0]?.Order_Status || 0,
         loading: false,
       }));
     } catch (error) {
@@ -180,6 +206,26 @@ export default function HistoryOrder() {
         }));
     }
   }, [state.selected]);
+
+  useEffect(() => {
+    fetchOrders(state.selected);
+
+    const channel = supabase
+      .channel("realtime-orders")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders" },
+        (payload) => {
+          console.log("Change received!", payload);
+          fetchOrders(state.selected);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase]); // Run once on component mount
 
   const navigateBack = () => {
     router.back();
@@ -240,23 +286,23 @@ export default function HistoryOrder() {
           />
         </Tabs>
         {state.loading && (
-          <p className="mx-4 mt-8 flex flex-col items-center justify-center mt-72">
+          <p className="mx-4 mt-8 flex flex-col items-center justify-center h-[36rem]">
             กำลังโหลด...
           </p>
         )}
         {state.error && (
-          <p className="mx-4 mt-8 flex flex-col items-center justify-center mt-72">
+          <p className="mx-4 mt-8 flex flex-col items-center justify-center h-[36rem]">
             {state.error}
           </p>
         )}
         {!state.loading && !state.error && state.orders.length === 0 && (
-          <div className="mx-4 mt-8 flex flex-col items-center justify-center mt-72">
+          <div className="mx-4 mt-8 flex flex-col items-center justify-center h-[32rem]">
             <img
               src="https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/preparing_order.png"
               alt="No orders"
-              className="h-28 animate-wiggle animate-infinite animate-duration-[1200ms] animate-ease-in-out"
+              className="h-[10rem] animate-wiggle animate-infinite animate-duration-[1200ms] animate-ease-in-out"
             />
-            <p className="mt-4 text-lg font-DB_v4 text-center">
+            <p className="mt-5 text-lg font-DB_v4 text-center">
               ไม่มีคำสั่งซื้อของคุณ{" "}
               <Link href={"product"} className="font-DB_Med text-green-600">
                 สั่งเลยตอนนี้!!
@@ -283,11 +329,18 @@ export default function HistoryOrder() {
               )}
               {state.selected === "completed" && (
                 <OrderStatus
-                  status="คำสั่งซื้อเสร็จสิ้น"
+                  status={
+                    state.orderStatus === 3
+                      ? "เตรียมเมนูอาหารเสร็จสิ้น"
+                      : state.orderStatus === 4
+                      ? "คำสั่งซื้อเสร็จสิ้น"
+                      : ""
+                  }
                   textColor={state.textColor}
                   orders={state.orders}
                 />
               )}
+
               {state.selected === "cancelled" && (
                 <OrderStatus
                   status="ยกเลิกคำสั่งซื้อ"
@@ -375,11 +428,11 @@ function OrderStatus({
                 </div>
                 <div className="text-gray-600 font-DB_v4">
                   {order.products.map((product, index) => (
-                    <div key={product.Product_ID} className="mb-1">
+                    <div key={product.Product_ID} className="mb-1 text-sm">
                       {product.Product_Name} ({product.Meat_Name}) x
                       {product.Product_Qty} <br />
-                      (ขนาด {product.Product_Size}, เพิ่ม {product.Option_Name})
-                      {index < order.products.length - 1 && ", "}
+                      (ขนาด {product.Product_Size}, เพิ่ม {product.Option_Names}
+                      ){index < order.products.length - 1 && ", "}
                     </div>
                   ))}
                 </div>

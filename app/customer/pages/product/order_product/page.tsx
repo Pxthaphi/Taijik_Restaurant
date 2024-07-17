@@ -149,7 +149,7 @@ export default function Order_Product() {
             (optionId: string) =>
               optionsData.find((option) => option.Option_ID === optionId)
                 ?.Option_Name || ""
-          );
+          ).join(", ");
 
           return {
             ...cartItem,
@@ -320,7 +320,7 @@ export default function Order_Product() {
         Product_Qty: quantityMap[product.Product_ID] || 0,
         Product_Size: product.Product_Size || "",
         Product_Meat: product.Product_Meat || "",
-        Product_Option: product.Product_Option.join(",") || "",
+        Product_Option: product.Product_Option,
         Product_Detail: product.Product_Detail || "",
         Total_Price: product.Total_Price || 0,
       }));
@@ -378,7 +378,6 @@ export default function Order_Product() {
       }).then(() => {
         window.location.href = `product/order_product/${Order_ID}`;
       });
-
     } catch (err) {
       console.error("Unexpected error:", err);
     }

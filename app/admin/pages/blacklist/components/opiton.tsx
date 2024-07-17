@@ -31,7 +31,7 @@ export default function OptionUsers({ userId }: { userId: string }) {
       preConfirm: async () => {
         try {
           // Delete the record from the database
-          const { error: deleteError } = await supabase
+          const {error: deleteError } = await supabase
             .from("users")
             .update({ User_Ticket: 0 })
             .eq("User_ID", userId);

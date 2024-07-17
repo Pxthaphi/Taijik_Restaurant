@@ -16,6 +16,7 @@ interface OrderProduct {
   OrderP_ID: number;
   Order_ID: string;
   Product_ID: number;
+  Product_Name: string;
   Product_Qty: number;
   Product_Size: string;
   Product_Meat: number;
@@ -60,6 +61,8 @@ export default function Order_Status({ params }: PageProps) {
   useEffect(() => {
     const fetchOrderDetails = async () => {
       setLoading(true);
+
+      // Fetch order details including status
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
         .select("Order_Status")
@@ -74,6 +77,7 @@ export default function Order_Status({ params }: PageProps) {
 
       setStatusOrder(orderData.Order_Status);
 
+      // Fetch order products details
       const { data: orderProductsData, error: orderProductsError } =
         await supabase
           .from("order_products")
@@ -86,13 +90,25 @@ export default function Order_Status({ params }: PageProps) {
         return;
       }
 
-      const meatIds = orderProductsData.map(
-        (product: OrderProduct) => product.Product_Meat
-      );
-      const optionIds = orderProductsData.map(
-        (product: OrderProduct) => product.Product_Option
-      );
+      const productIds = orderProductsData.map((product) => product.Product_ID);
+      const meatIds = orderProductsData.map((product) => product.Product_Meat);
+      const optionIds = orderProductsData.flatMap(
+        (product) => product.Product_Option
+      ); // flatten option IDs array
 
+      // Fetch product names
+      const { data: productsData, error: productsError } = await supabase
+        .from("products")
+        .select("*")
+        .in("Product_ID", productIds);
+
+      if (productsError) {
+        console.error(productsError);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch meat names
       const { data: meatData, error: meatError } = await supabase
         .from("product_meat")
         .select("*")
@@ -104,6 +120,7 @@ export default function Order_Status({ params }: PageProps) {
         return;
       }
 
+      // Fetch option names
       const { data: optionData, error: optionError } = await supabase
         .from("product_option")
         .select("*")
@@ -115,21 +132,27 @@ export default function Order_Status({ params }: PageProps) {
         return;
       }
 
-      const enhancedOrderProducts = orderProductsData.map(
-        (product: OrderProduct) => {
-          const meat = meatData.find(
-            (m: any) => m.Meat_ID === product.Product_Meat
-          );
-          const option = optionData.find(
-            (o: any) => o.Option_ID === product.Product_Option
-          );
-          return {
-            ...product,
-            Meat_Name: meat ? meat.Meat_Name : "Unknown Meat",
-            Option_Name: option ? option.Option_Name : "Unknown Option",
-          };
-        }
-      );
+      // Map product names and details to order products
+      const enhancedOrderProducts = orderProductsData.map((product) => {
+        const productInfo = productsData.find(
+          (p) => p.Product_ID === product.Product_ID
+        );
+        const meat = meatData.find((m) => m.Meat_ID === product.Product_Meat);
+        const options = product.Product_Option.map((optionId: number) => {
+          // Explicitly define optionId as number or appropriate type
+          const option = optionData.find((o) => o.Option_ID === optionId);
+          return option ? option.Option_Name : "Unknown Option";
+        });
+
+        return {
+          ...product,
+          Product_Name: productInfo
+            ? productInfo.Product_Name
+            : "Unknown Product",
+          Meat_Name: meat ? meat.Meat_Name : "Unknown Meat",
+          Option_Name: options.join(", "), // Assuming multiple options are concatenated
+        };
+      });
 
       setOrderProducts(enhancedOrderProducts);
       setLoading(false);
@@ -159,6 +182,12 @@ export default function Order_Status({ params }: PageProps) {
     setCancelOrderId(orderId);
     setIsModalOpen(true);
   };
+
+  // Calculate total price
+  const totalPrice = orderProducts.reduce(
+    (acc, product) => acc + product.Total_Price,
+    0
+  );
 
   if (statusOrder == 1) {
     Status_text = "รอการยืนยันคำสั่งซื้อจากทางร้าน";
@@ -207,6 +236,7 @@ export default function Order_Status({ params }: PageProps) {
   if (loading) {
     return <Loading_Order />;
   }
+  
   return (
     <>
       <header className="relative flex items-center justify-center max-w-screen overflow-hidden">
@@ -232,7 +262,7 @@ export default function Order_Status({ params }: PageProps) {
               <button
                 className="inline-block bg-red-500 hover:bg-red-600 py-1.5 px-2.5 rounded-full"
                 onClick={() => openModal(orderProducts[0].Order_ID)}
-                >
+              >
                 <div className="flex items-center justify-center">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -275,21 +305,22 @@ export default function Order_Status({ params }: PageProps) {
         </div>
       </header>
 
-      {orderProducts.map((product) => (
-        <main key={product.OrderP_ID}>
-          <section className="mx-6 mt-6">
-            <h1 className={`text-2xl font-DB_Med ${Status_textcolor}`}>
-              {Status_text}
-            </h1>
-            <p className="text-base font-DB_v4 text-gray-800 mt-2">
-              {Status_detail}
-            </p>
+      <main>
+        <section className="mx-6 mt-6">
+          <h1 className={`text-2xl font-DB_Med ${Status_textcolor}`}>
+            {Status_text}
+          </h1>
+          <p className="text-base font-DB_v4 text-gray-800 mt-2">
+            {Status_detail}
+          </p>
+          
             <p className="text-base font-DB_v4 text-gray-600 mt-2">
-              เลขคำสั่งซื้อ {product.Order_ID}
+              เลขคำสั่งซื้อ {params.slug}
             </p>
-            <hr className="h-px my-2 bg-gray-100 border-0 pt-1 rounded-full mt-5"></hr>
-          </section>
-          <section className="mx-6 mt-6 my-3">
+          <hr className="h-px my-2 bg-gray-100 border-0 pt-1 rounded-full mt-5"></hr>
+        </section>
+        {orderProducts.map((product) => (
+          <section key={product.OrderP_ID} className="mx-6 mt-6 my-3">
             <div className="flex justify-between item-center my-4">
               <div className="flex justify-center">
                 <div className="bg-gray-200 rounded-lg px-5 py-2 flex items-center me-4">
@@ -299,7 +330,8 @@ export default function Order_Status({ params }: PageProps) {
                 </div>
                 <div className="-my-0.5">
                   <h3 className="text-lg font-DB_v4 text-gray-700">
-                    ข้าวกะเพรา ({product.Meat_Name}) {product.Product_Size}
+                    {product.Product_Name}({product.Meat_Name}){" "}
+                    {product.Product_Size}
                   </h3>
                   <p className="text-base font-DB_v4 text-gray-500">
                     เพิ่มเติม : {product.Option_Name}
@@ -316,32 +348,32 @@ export default function Order_Status({ params }: PageProps) {
               </p>
             </div>
 
-            <hr className="h-px my-2 bg-gray-100 border-0 pt-1 rounded-full mt-6"></hr>
           </section>
-          <section key={product.OrderP_ID} className="mx-6 mt-5">
-            <div className="flex justify-between mt-5 my-5">
-              <div className="text-xl text-gray-800 font-DB_Med">ส่วนลด</div>
-              <div className="text-xl text-red-600 font-DB_Med">฿0</div>
-            </div>
-            <div className="flex justify-between mt-3">
-              <div className="text-xl text-gray-800 font-DB_Med">
-                ราคารวมสุทธิ
-              </div>
-              <div className="text-xl text-green-600 font-DB_Med">
-                ฿{product.Total_Price}
-              </div>
-            </div>
-          </section>
-          {/* Modal */}
-          {isModalOpen && (
-            <Modal_CancelOrder
-              setIsModalOpen={setIsModalOpen}
-              orderId={cancelOrderId}
-            />
-          )}
-        </main>
-      ))}
+        ))}
+        <hr className="mx-6 h-px my-2 bg-gray-100 border-0 pt-1 rounded-full mt-6"></hr>
 
+        <section className="mx-6 mt-5">
+          <div className="flex justify-between mt-5 my-5">
+            <div className="text-xl text-gray-800 font-DB_Med">ส่วนลด</div>
+            <div className="text-xl text-red-600 font-DB_Med">฿0</div>
+          </div>
+          <div className="flex justify-between mt-3">
+            <div className="text-xl text-gray-800 font-DB_Med">
+              ราคารวมสุทธิ
+            </div>
+            <div className="text-xl text-green-600 font-DB_Med">
+              ฿{totalPrice}
+            </div>
+          </div>
+        </section>
+        {/* Modal */}
+        {isModalOpen && (
+          <Modal_CancelOrder
+            setIsModalOpen={setIsModalOpen}
+            orderId={cancelOrderId}
+          />
+        )}
+      </main>
       <footer className="flex justify-center fixed bottom-0 inset-x-0 mb-8">
         {statusOrder == 4 && (
           <div className="flex justify-between item-center">
