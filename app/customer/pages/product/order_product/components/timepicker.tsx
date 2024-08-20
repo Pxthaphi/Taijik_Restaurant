@@ -1,28 +1,14 @@
 import * as React from "react";
-import { Dayjs } from "dayjs";
-import dayjs from "dayjs";
+import dayjs, { Dayjs } from "dayjs";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import {
-  MobileTimePicker,
-  MobileTimePickerProps,
-} from "@mui/x-date-pickers/MobileTimePicker";
+import { MobileTimePicker, MobileTimePickerProps } from "@mui/x-date-pickers/MobileTimePicker";
 import { UseDateFieldProps } from "@mui/x-date-pickers/DateField";
-import {
-  BaseSingleInputFieldProps,
-  DateValidationError,
-  FieldSection,
-} from "@mui/x-date-pickers/models";
+import { BaseSingleInputFieldProps, DateValidationError, FieldSection } from "@mui/x-date-pickers/models";
 
 interface ButtonFieldProps
   extends UseDateFieldProps<Dayjs, false>,
-    BaseSingleInputFieldProps<
-      Dayjs | null,
-      Dayjs,
-      FieldSection,
-      false,
-      DateValidationError
-    > {
+    BaseSingleInputFieldProps<Dayjs | null, Dayjs, FieldSection, false, DateValidationError> {
   setOpen?: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
@@ -73,7 +59,7 @@ function ButtonTimePicker(
       {...props}
       open={open}
       ampm={false}
-      closeOnSelect={true}
+      closeOnSelect
       onClose={() => setOpen(false)}
       onOpen={() => setOpen(true)}
     />
@@ -85,24 +71,37 @@ interface PickerWithButtonFieldProps {
 }
 
 export default function PickerWithButtonField(props: PickerWithButtonFieldProps) {
-  const [value, setValue] = React.useState<Dayjs | null>(null);
-  const MinTime = dayjs().set("hour", 9).startOf("hour");
-  const MaxTime = dayjs().set("hour", 22).startOf("hour");
+  const [value, setValue] = React.useState<Dayjs | null>(dayjs()); // Initialize with current time
+  const [currentTime, setCurrentTime] = React.useState<Dayjs>(dayjs()); // State to hold the current time
+
+  const MinTime = currentTime.startOf("minute"); // Minimum selectable time is now
+  const MaxTime = dayjs().set("hour", 20).startOf("hour"); // Maximum selectable time
+
+  React.useEffect(() => {
+    const updateTime = () => setCurrentTime(dayjs()); // Update current time every minute
+    const intervalId = setInterval(updateTime, 60000); // Update every minute
+
+    return () => clearInterval(intervalId); // Cleanup interval on component unmount
+  }, []);
+
+  React.useEffect(() => {
+    setValue(currentTime); // Update value when currentTime changes
+  }, [currentTime]);
 
   const handleChange = (newValue: Dayjs | null) => {
     setValue(newValue);
-    props.onChange(newValue); // Send selected time back to parent component
+    props.onChange(newValue);
   };
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <ButtonTimePicker
-        label={value == null ? null : value.format("HH:mm")}
+        label={value?.format("HH:mm") ?? null}
         value={value}
-        defaultValue={MinTime}
+        defaultValue={currentTime}
         minTime={MinTime}
         maxTime={MaxTime}
-        onChange={handleChange} // Call handleChange when a new time is selected
+        onChange={handleChange}
       />
     </LocalizationProvider>
   );

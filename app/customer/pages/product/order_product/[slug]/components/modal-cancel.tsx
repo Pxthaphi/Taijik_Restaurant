@@ -11,6 +11,7 @@ import {
 import { Textarea } from "@nextui-org/input";
 import Swal from "sweetalert2";
 import { supabase } from "@/lib/supabase";
+import { getUserID } from "@/app/auth/getUserID";
 
 interface ModalCancelOrderProps {
   setIsModalOpen: (isOpen: boolean) => void;
@@ -70,6 +71,9 @@ export default function ModalCancelOrder({
             showConfirmButton: false,
             timer: 1000,
           });
+
+          await sendOrderNotification();
+          
         } catch (error) {
           console.log("Error cancelling order:", error);
           Swal.fire({
@@ -80,6 +84,153 @@ export default function ModalCancelOrder({
         }
       }
     });
+  };
+
+  const sendOrderNotification = async () => {
+    const userId = getUserID();
+
+    if (!userId) {
+      console.error("User ID is not available");
+      return;
+    }
+
+    // Flex Message ข้อความ
+    const message = [
+      {
+        type: "flex",
+        altText: `ร้านอาหารใต้จิก : คำสั่งซื้อ [${orderId}] | สถานะคำสั่งซื้อ ยกเลิกคำสั่งซื้อ`,
+        contents: {
+          type: "bubble",
+          body: {
+            type: "box",
+            layout: "vertical",
+            spacing: "md",
+            contents: [
+              {
+                type: "image",
+                url: "https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/bg_order.png",
+                size: "full",
+                aspectRatio: "20:13",
+                aspectMode: "cover",
+                animated: true,
+              },
+              {
+                type: "box",
+                layout: "horizontal",
+                contents: [
+                  {
+                    type: "image",
+                    url: "https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/failed_order.png",
+                    size: "full",
+                    margin: "15px",
+                    animated: true,
+                  },
+                ],
+                width: "180px",
+                position: "absolute",
+                offsetStart: "65px",
+                offsetTop: "27px",
+                height: "190px",
+                justifyContent: "center",
+              },
+              {
+                type: "text",
+                text: "ร้านอาหารใต้จิก",
+                offsetStart: "5px",
+                size: "xs",
+                weight: "bold",
+                offsetTop: "5px",
+                color: "#4f4f4f",
+                align: "start",
+              },
+              {
+                type: "text",
+                size: "lg",
+                weight: "bold",
+                wrap: true,
+                align: "start",
+                color: "#D41111",
+                text: "ยกเลิกคำสั่งซื้อ",
+                margin: "10px",
+                decoration: "none",
+                offsetStart: "5px",
+                style: "normal",
+              },
+              {
+                type: "box",
+                layout: "horizontal",
+                contents: [
+                  {
+                    type: "text",
+                    text: "เลขคำสั่งซื้อ",
+                    color: "#555555",
+                    size: "sm",
+                    flex: 1,
+                    weight: "bold",
+                  },
+                  {
+                    type: "text",
+                    text: `${orderId}`, // ตรวจสอบว่า Order_ID มีค่าก่อนใช้
+                    color: "#555555",
+                    size: "sm",
+                    weight: "bold",
+                    flex: 2,
+                  },
+                ],
+                offsetStart: "5px",
+              },
+              {
+                type: "separator",
+                margin: "xl",
+              },
+            ],
+            paddingAll: "10px",
+            backgroundColor: "#ffffff",
+          },
+          footer: {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "button",
+                style: "primary",
+                color: "#88D66C",
+                action: {
+                  type: "uri",
+                  label: "รายละเอียดคำสั่งซื้อ",
+                  uri: `https://liff.line.me/2004539512-7wZyNkj0/customer/pages/product/order_product/${orderId}`,
+                },
+                height: "sm",
+                gravity: "center",
+              },
+            ],
+            maxWidth: "190px",
+            offsetStart: "50px",
+            margin: "lg",
+          },
+        },
+      },
+    ];
+
+    try {
+      const response = await fetch("/api/sendFlexMessage", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId, message }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log(data.message);
+      } else {
+        console.error("Failed to send notification:", data.error);
+      }
+    } catch (error) {
+      console.error("Error sending notification:", error);
+    }
   };
 
   return (

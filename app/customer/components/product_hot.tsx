@@ -136,7 +136,7 @@ function ProductCard({ product }: { product: Product }) {
 
           <img
             className="w-full h-24 object-cover"
-            src={product.Product_Image} // Use Product_Image field as image source
+            src={`${product.Product_Image}?t=${new Date().getTime()}`}
             alt={`Image of ${product.Product_Name}`} // Add alt text for accessibility
           />
           <div className="px-3 py-2">

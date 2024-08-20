@@ -105,13 +105,14 @@ export default function Food() {
   );
 }
 function ProductCard({ product }: { product: Product }) {
+
   return (
     <div>
       <div className="bg-white border rounded-xl shadow-sm sm:flex">
         <div className="flex-shrink-0 relative w-full rounded-t-xl overflow-hidden pt-[40%] sm:rounded-s-xl sm:max-w-60 md:rounded-se-none md:max-w-xs">
           <img
             className="absolute top-0 start-0 w-full h-full object-cover"
-            src={product.Product_Image}
+            src={`${product.Product_Image}?t=${new Date().getTime()}`}
             alt={product.Product_Name}
           />
         </div>

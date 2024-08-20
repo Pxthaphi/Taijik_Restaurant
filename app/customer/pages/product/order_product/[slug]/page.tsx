@@ -137,9 +137,14 @@ export default function Order_Status({ params }: PageProps) {
         const productInfo = productsData.find(
           (p) => p.Product_ID === product.Product_ID
         );
-        const meat = meatData.find((m) => m.Meat_ID === product.Product_Meat);
+
+        // ปรับให้ `Product_Meat` เป็น array
+        const meats = product.Product_Meat.map((meatId: number) => {
+          const meat = meatData.find((m) => m.Meat_ID === meatId);
+          return meat ? meat.Meat_Name : "Unknown Meat";
+        });
+
         const options = product.Product_Option.map((optionId: number) => {
-          // Explicitly define optionId as number or appropriate type
           const option = optionData.find((o) => o.Option_ID === optionId);
           return option ? option.Option_Name : "Unknown Option";
         });
@@ -149,8 +154,8 @@ export default function Order_Status({ params }: PageProps) {
           Product_Name: productInfo
             ? productInfo.Product_Name
             : "Unknown Product",
-          Meat_Name: meat ? meat.Meat_Name : "Unknown Meat",
-          Option_Name: options.join(", "), // Assuming multiple options are concatenated
+          Meat_Name: meats.join(", "), // รวมชื่อเนื้อที่พบเป็น comma-separated string
+          Option_Name: options.join(", "), // รวมตัวเลือกที่พบเป็น comma-separated string
         };
       });
 
@@ -236,7 +241,7 @@ export default function Order_Status({ params }: PageProps) {
   if (loading) {
     return <Loading_Order />;
   }
-  
+
   return (
     <>
       <header className="relative flex items-center justify-center max-w-screen overflow-hidden">
@@ -313,10 +318,10 @@ export default function Order_Status({ params }: PageProps) {
           <p className="text-base font-DB_v4 text-gray-800 mt-2">
             {Status_detail}
           </p>
-          
-            <p className="text-base font-DB_v4 text-gray-600 mt-2">
-              เลขคำสั่งซื้อ {params.slug}
-            </p>
+
+          <p className="text-base font-DB_v4 text-gray-600 mt-2">
+            เลขคำสั่งซื้อ {params.slug}
+          </p>
           <hr className="h-px my-2 bg-gray-100 border-0 pt-1 rounded-full mt-5"></hr>
         </section>
         {orderProducts.map((product) => (
@@ -330,7 +335,8 @@ export default function Order_Status({ params }: PageProps) {
                 </div>
                 <div className="-my-0.5">
                   <h3 className="text-lg font-DB_v4 text-gray-700">
-                    {product.Product_Name}({product.Meat_Name}){" "}
+                    {product.Product_Name}{" "}
+                    <span className="text-base">({product.Meat_Name})</span>{" "}
                     {product.Product_Size}
                   </h3>
                   <p className="text-base font-DB_v4 text-gray-500">
@@ -343,11 +349,10 @@ export default function Order_Status({ params }: PageProps) {
                   )}
                 </div>
               </div>
-              <p className="text-lg text-green-700 font-DB_Med mt-2.5">
+              <p className="text-lg text-green-600 font-DB_Med mt-2.5">
                 ฿{product.Total_Price}
               </p>
             </div>
-
           </section>
         ))}
         <hr className="mx-6 h-px my-2 bg-gray-100 border-0 pt-1 rounded-full mt-6"></hr>

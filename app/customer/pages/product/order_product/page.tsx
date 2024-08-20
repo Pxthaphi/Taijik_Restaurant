@@ -21,7 +21,7 @@ interface CartItem {
   Product_ID: string;
   Product_Qty: number;
   Product_Size: string;
-  Product_Meat: string;
+  Product_Meat: string[];
   Product_Option: string[];
   Product_Detail: string;
   Total_Price: number;
@@ -40,7 +40,7 @@ interface FoodOption {
 interface MergedProduct extends CartItem {
   Product_Name: string;
   Product_Image: string;
-  Meat_Name: string;
+  Meat_Name: string[];
   Option_Names: string[];
 }
 
@@ -142,20 +142,27 @@ export default function Order_Product() {
           const productData = productsData.find(
             (product) => product.Product_ID === cartItem.Product_ID
           );
-          const meatData = meatsData.find(
-            (meat) => meat.Meat_ID === cartItem.Product_Meat
-          );
+
+          // Explicitly type the parameter 'meat' in the map function
+          const meatData = cartItem.Product_Meat.map((meatId: string) => {
+            const meat = meatsData.find((meat) => meat.Meat_ID === meatId);
+            return meat?.Meat_Name || "";
+          }).join(", ");
+
           const optionNames = cartItem.Product_Option.map(
-            (optionId: string) =>
-              optionsData.find((option) => option.Option_ID === optionId)
-                ?.Option_Name || ""
+            (optionId: string) => {
+              const option = optionsData.find(
+                (option) => option.Option_ID === optionId
+              );
+              return option?.Option_Name || "";
+            }
           ).join(", ");
 
           return {
             ...cartItem,
             Product_Name: productData?.Product_Name || "",
             Product_Image: productData?.Product_Image || "",
-            Meat_Name: meatData?.Meat_Name || "",
+            Meat_Name: meatData,
             Option_Names: optionNames,
           };
         });
@@ -376,10 +383,263 @@ export default function Order_Product() {
         showConfirmButton: false,
         timer: 2000,
       }).then(() => {
-        window.location.href = `product/order_product/${Order_ID}`;
+        window.location.href = `order_product/${Order_ID}`;
       });
+
+      // Send Flex Message
+      sendOrderNotification();
     } catch (err) {
       console.error("Unexpected error:", err);
+    }
+  };
+
+  const sendOrderNotification = async () => {
+    const userId = getUserID();
+
+    if (!userId) {
+      console.error("User ID is not available");
+      return;
+    }
+
+    // สร้างรายการอาหาร
+    const orderItems = products.map((product) => {
+      const quantity = quantityMap[product.Product_ID] || 1; // ค่าเริ่มต้นเป็น 1 ถ้าจำนวนไม่ระบุ
+      const optionsText = product.Option_Names
+        ? ` (เพิ่ม ${product.Option_Names})`
+        : "";
+
+      return {
+        type: "box",
+        layout: "horizontal",
+        contents: [
+          {
+            type: "text",
+            text: `${product.Product_Name} (${product.Meat_Name})${optionsText} x ${quantity}`,
+            flex: 0,
+            size: "sm",
+          },
+          {
+            type: "text",
+            text: `฿${product.Total_Price * quantity}`,
+            align: "end",
+            offsetEnd: "10px",
+            color: "#399918",
+          },
+        ],
+      };
+    });
+
+    // คำนวณส่วนลดและราคาสุทธิ
+    const discount = 0; // สมมุติส่วนลดเป็น 0
+    const totalPrice = products.reduce((sum, product) => {
+      const quantity = quantityMap[product.Product_ID] || 1;
+      return sum + product.Total_Price * quantity;
+    }, 0);
+    const finalPrice = totalPrice - discount;
+
+    // Flex Message ข้อความ
+    const message = [
+      {
+        type: "flex",
+        altText: `ร้านอาหารใต้จิก : คำสั่งซื้อ [${Order_ID}] | สถานะคำสั่งซื้อ รอการยืนยันจากทางร้าน`,
+        contents: {
+          type: "bubble",
+          body: {
+            type: "box",
+            layout: "vertical",
+            spacing: "md",
+            contents: [
+              {
+                type: "image",
+                url: "https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/bg_order.png",
+                size: "full",
+                aspectRatio: "20:13",
+                aspectMode: "cover",
+                animated: true,
+              },
+              {
+                type: "box",
+                layout: "horizontal",
+                contents: [
+                  {
+                    type: "image",
+                    url: "https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/waiting_order.png",
+                    size: "full",
+                    margin: "15px",
+                    animated: true,
+                  },
+                ],
+                width: "180px",
+                position: "absolute",
+                offsetStart: "65px",
+                offsetTop: "27px",
+                height: "190px",
+                justifyContent: "center",
+              },
+              {
+                type: "text",
+                text: "ร้านอาหารใต้จิก",
+                offsetStart: "5px",
+                size: "xs",
+                weight: "bold",
+                offsetTop: "5px",
+                color: "#4f4f4f",
+                align: "start",
+              },
+              {
+                type: "text",
+                size: "lg",
+                weight: "bold",
+                wrap: true,
+                align: "start",
+                color: "#008DDA",
+                text: "รอทางร้านยืนยันคำสั่งซื้อ",
+                margin: "10px",
+                decoration: "none",
+                offsetStart: "5px",
+                style: "normal",
+              },
+              {
+                type: "box",
+                layout: "horizontal",
+                contents: [
+                  {
+                    type: "text",
+                    text: "เลขคำสั่งซื้อ",
+                    color: "#555555",
+                    size: "sm",
+                    flex: 1,
+                    weight: "bold",
+                  },
+                  {
+                    type: "text",
+                    text: `${Order_ID}`, // ตรวจสอบว่า Order_ID มีค่าก่อนใช้
+                    color: "#555555",
+                    size: "sm",
+                    weight: "bold",
+                    flex: 2,
+                  },
+                ],
+                offsetStart: "5px",
+              },
+              {
+                type: "separator",
+                margin: "lg",
+              },
+              {
+                type: "box",
+                layout: "vertical",
+                contents: orderItems,
+                spacing: "xs",
+                margin: "xxl",
+                offsetStart: "5px",
+              },
+              {
+                type: "separator",
+                margin: "xl",
+              },
+              {
+                type: "box",
+                layout: "vertical",
+                contents: [
+                  {
+                    type: "box",
+                    layout: "horizontal",
+                    contents: [
+                      {
+                        type: "text",
+                        text: "ส่วนลด",
+                        color: "#c21313",
+                        offsetStart: "5px",
+                        align: "start",
+                        weight: "bold",
+                        size: "md",
+                      },
+                      {
+                        type: "text",
+                        text: `-฿${discount}`,
+                        offsetEnd: "5px",
+                        align: "end",
+                        color: "#c21313",
+                        size: "md",
+                      },
+                    ],
+                    paddingBottom: "10px",
+                    paddingTop: "5px",
+                  },
+                  {
+                    type: "box",
+                    layout: "horizontal",
+                    contents: [
+                      {
+                        type: "text",
+                        text: "ราคาสุทธิ",
+                        offsetStart: "5px",
+                        size: "md",
+                        weight: "bold",
+                        color: "#269117",
+                      },
+                      {
+                        type: "text",
+                        text: `฿${finalPrice}`,
+                        offsetEnd: "5px",
+                        align: "end",
+                        color: "#269117",
+                        weight: "regular",
+                        size: "md",
+                      },
+                    ],
+                    paddingBottom: "10px",
+                  },
+                ],
+              },
+            ],
+            paddingAll: "10px",
+            backgroundColor: "#ffffff",
+          },
+          footer: {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "button",
+                style: "primary",
+                color: "#88D66C",
+                action: {
+                  type: "uri",
+                  label: "ดูสถานะคำสั่งซื้อ",
+                  uri: `https://liff.line.me/2004539512-7wZyNkj0/customer/pages/product/order_product/${Order_ID}`,
+                },
+                height: "sm",
+                gravity: "center",
+              },
+            ],
+            maxWidth: "190px",
+            offsetStart: "50px",
+            margin: "lg",
+          },
+        },
+      },
+    ];
+
+    try {
+      const response = await fetch("/api/sendFlexMessage", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId, message }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log(data.message);
+      } else {
+        console.error("Failed to send notification:", data.error);
+      }
+    } catch (error) {
+      console.error("Error sending notification:", error);
     }
   };
 
@@ -466,13 +726,13 @@ export default function Order_Product() {
                 <div className="w-1/3 ms-2">
                   <img
                     className="w-18 h-18 object-cover rounded-xl"
-                    src={product.Product_Image}
+                    src={`${product.Product_Image}?t=${new Date().getTime()}`}
                     alt="Product Image"
                   />
                 </div>
                 <div className="w-1/2 ms-6 pt-1">
                   <h3 className="text-lg font-DB_Med text-gray-700">
-                    {product.Product_Name} ({product.Meat_Name})
+                    {product.Product_Name} <span className="text-sm">({product.Meat_Name})</span>
                   </h3>
                   {product.Option_Names && (
                     <p className="text-sm text-gray-500 font-DB_v4">
@@ -605,8 +865,11 @@ export default function Order_Product() {
           {products.map((product) => (
             <div key={product.Product_ID} className="flex justify-between mt-3">
               <div className="text-base text-gray-800 font-DB_Med">
-                {product.Product_Name} ({product.Meat_Name}) (เพิ่ม{" "}
-                {product.Option_Names}) x {quantityMap[product.Product_ID]}
+                {product.Product_Name} <span className="text-sm">({product.Meat_Name})</span>{" "}
+                {product.Option_Names && (
+                  <span className="text-sm">(เพิ่ม {product.Option_Names})</span>
+                )}{" "}
+                x {quantityMap[product.Product_ID]}
               </div>
               <div className="text-base text-gray-800 font-DB_Med">
                 ฿{product.Total_Price * (quantityMap[product.Product_ID] || 0)}

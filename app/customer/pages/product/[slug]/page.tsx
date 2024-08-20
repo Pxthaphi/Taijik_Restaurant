@@ -40,25 +40,56 @@ export default function Product_Detail({ params }: PageProps) {
   const [meats, setMeats] = useState<Meat[]>([]);
   const [options, setOptions] = useState<FoodOption[]>([]);
   const [selectedSize, setSelectedSize] = useState<number>(0);
-  const [selectedMeat, setSelectedMeat] = useState<number | null>(null);
+  const [selectedMeat, setSelectedMeat] = useState<number[]>([]);
   const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
   const [sizeProduct, setSize] = useState("ธรรมดา");
   const [productDetail, setProductDetail] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [specialMeatSelected, setSpecialMeatSelected] = useState(false);
+
 
   // Define state to hold the total price
   const [totalPrice, setTotalPrice] = useState<number>(0);
   const userID = getUserID();
 
+  // Handler to update selected meats with a limit of 3 and special logic
+  const handleMeatChange = (values: string[]) => {
+    const selected = values.map(value => parseInt(value));
+
+    if (selected.includes(6)) { // Assuming 1 is the ID for "รวมมิตร"
+      setSpecialMeatSelected(true);
+      setSelectedMeat([6]); // Only allow "รวมมิตร" to be selected
+    } else {
+      setSpecialMeatSelected(false);
+      if (selected.length <= 3) {
+        setSelectedMeat(selected);
+      } else {
+        // Optional: Show a message or alert to indicate limit
+        // alert('You can select a maximum of 3 meats.');
+        Swal.fire({
+          icon: "warning",
+          title: "เตือน!!",
+          text: "สามารถเลือกเนื้อสัตว์ได้สูงสุด 3 อย่าง",
+          confirmButtonText: "ตกลง",
+          confirmButtonColor: "#2AA215",
+        });
+      }
+    }
+  };
+
+  // Check if the meat with ID 1 ("รวมมิตร") is included in the list of meats
+  const isSpecialMeatIncluded = selectedMeat.includes(6);
+
   // Function to calculate total price
   const calculateTotalPrice = () => {
     if (products.length > 0) {
       const basePrice = products[0].Product_Price;
-      const meatPrice = selectedMeat
-        ? meats.find((meat) => meat.Meat_ID === selectedMeat)?.Meat_Price || 0
-        : 0;
+      const meatPrice = selectedMeat.reduce((acc, meatID) => {
+        const meat = meats.find((meat) => meat.Meat_ID === meatID);
+        return acc + (meat ? meat.Meat_Price : 0);
+      }, 0);
       const optionsPrice = selectedOptions.reduce((acc, optionID) => {
         const option = options.find((option) => option.Option_ID === optionID);
         return acc + (option ? option.Option_Price : 0);
@@ -280,7 +311,14 @@ export default function Product_Detail({ params }: PageProps) {
     // console.log("Option: ", selectedOptions);
     // console.log("Detail: ", productDetail);
     console.log("Total Price: ", totalPrice);
-  }, [sizeProduct, selectedSize, selectedMeat, selectedOptions, productDetail, totalPrice]);
+  }, [
+    sizeProduct,
+    selectedSize,
+    selectedMeat,
+    selectedOptions,
+    productDetail,
+    totalPrice,
+  ]);
 
   if (loading) {
     return (
@@ -342,7 +380,7 @@ export default function Product_Detail({ params }: PageProps) {
             <div className="w-full h-64">
               <img
                 className="w-full h-full object-cover"
-                src={product.Product_Image}
+                src={`${product.Product_Image}?t=${new Date().getTime()}`}
                 alt={product.Product_Name}
               />
             </div>
@@ -518,12 +556,14 @@ export default function Product_Detail({ params }: PageProps) {
 
           <section>
             <div className="mx-8 mt-8">
-              <div className="font-DB_Med text-xl">เลือกเนื้อสัตว์</div>
+              <div className="font-DB_Med text-xl">
+                เลือกเนื้อสัตว์ ({selectedMeat.length}/3)
+              </div>
               <div className="pt-2">
                 <div className="mb-4">
-                  <RadioGroup
-                    value={selectedMeat?.toString()}
-                    onValueChange={(e) => setSelectedMeat(parseInt(e))}
+                  <CheckboxGroup
+                    value={selectedMeat.map((meat) => meat.toString())}
+                    onValueChange={handleMeatChange}
                     color="success"
                   >
                     {meats.map((meat) => (
@@ -531,18 +571,19 @@ export default function Product_Detail({ params }: PageProps) {
                         key={meat.Meat_ID}
                         className="flex items-center justify-between pt-2"
                       >
-                        <Radio
+                        <Checkbox
                           value={`${meat.Meat_ID}`}
                           className="flex-grow font-DB_v4"
+                          disabled={meat.Meat_Name === 'รวมมิตร' ? specialMeatSelected : isSpecialMeatIncluded}
                         >
                           {meat.Meat_Name}
-                        </Radio>
+                        </Checkbox>
                         <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl ml-4">
                           ฿{meat.Meat_Price}
                         </div>
                       </div>
                     ))}
-                  </RadioGroup>
+                  </CheckboxGroup>
                 </div>
               </div>
             </div>

@@ -59,7 +59,10 @@ export default function Edit_Product({ params }: PageProps) {
           setPrice(data.Product_Price || "");
           setSelectedType(data.Product_Type || "");
           setP_Status(data.Product_Status || "");
-          setPreview(data.Product_Image);
+
+          const newimageUrl = `${data.Product_Image}?t=${new Date().getTime()}`
+
+          setPreview(newimageUrl);
           if (data.Product_Status == 1) {
             setIsSelectedStatus(true);
           } else if (data.Product_Status == 2) {
@@ -132,61 +135,12 @@ export default function Edit_Product({ params }: PageProps) {
     maxSize: 25 * 1024 * 1024, // 25MB
   });
 
-  // Function to delete product image from storage
-  const deleteProductImage = async () => {
-    try {
-      // Get the file path from the database before deleting the record
-      const { data: productData, error: fetchError } = await supabase
-        .from("products")
-        .select("Product_Image")
-        .eq("Product_ID", params.slug)
-        .single();
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      console.log({ Link: productData.Product_Image });
-
-      // Check file type
-      const fileType = productData.Product_Image.split(".").pop().toLowerCase();
-
-      console.log({ Type: fileType });
-
-      // Check if file type is PNG or JPG
-      if (fileType !== "png" && fileType !== "jpg" && fileType !== "jpeg") {
-        throw new Error("Invalid file type");
-      }
-
-      // Remove the file from storage
-      const { error: storageError } = await supabase.storage
-        .from("Product")
-        .remove([`${params.slug}.${fileType}`]);
-
-      if (storageError) {
-        throw storageError;
-      }
-
-      console.log("Successfully deleted image");
-
-      // Optionally, update state or UI after deletion
-      setPreview(null); // Clear preview if needed
-    } catch (error: any) {
-      console.error("Error deleting product image:", error.message);
-      Swal.fire({
-        icon: "error",
-        title: "Delete Failed",
-        text: "An error occurred while deleting the product image. Please try again later.",
-      });
-    }
-  };
-
   useEffect(() => {
-    if(isSelectedDisable == true){
+    if (isSelectedDisable == true) {
       setP_Status("3");
-    }else if(isSelectedStatus == true){
+    } else if (isSelectedStatus == true) {
       setP_Status("1");
-    }else{
+    } else {
       setP_Status("2");
     }
   }, [isSelectedDisable, isSelectedStatus]);
@@ -225,8 +179,6 @@ export default function Edit_Product({ params }: PageProps) {
       let imageUrl = preview; // Assume preview holds the current image URL from database
 
       if (file) {
-        // Delete old image from storage
-        await deleteProductImage();
 
         // Upload new image to Supabase storage
 
@@ -235,7 +187,10 @@ export default function Edit_Product({ params }: PageProps) {
 
         const { error } = await supabase.storage
           .from("Product")
-          .upload(fileName, file);
+          .update(fileName, file, {
+            cacheControl: "3600",
+            upsert: true,
+          });
 
         if (error) {
           throw error;
@@ -249,8 +204,8 @@ export default function Edit_Product({ params }: PageProps) {
         if (!data) {
           throw new Error("Failed to get image URL from storage.");
         }
-
-        imageUrl = data.publicUrl;
+        imageUrl = data.publicUrl
+        console.log("image: ",imageUrl);
       }
 
       // Get current timestamp

@@ -6,9 +6,16 @@ import Link from "next/link";
 import { GetProfile } from "../auth/GetProfile";
 import Loading from "../components/loading";
 import Navigator from "./components/footer";
+import ModalTelphone from "./components/modal-telephone";
+import { getUserID } from "@/app/auth/getUserID";
+import { supabase } from "@/lib/supabase";
+import Swal from 'sweetalert2';
+import liff from "@line/liff";
+
+
 
 interface Profile {
-  pictureUrl?: string; 
+  pictureUrl?: string;
   displayName?: string;
   statusMessage?: string;
 }
@@ -16,6 +23,7 @@ interface Profile {
 export default function Customer() {
   const [profile, setProfile] = useState<Profile>({});
   const [loading, setLoading] = useState(true);
+  const [telephone, setTelephone] = useState("");
 
   useEffect(() => {
     async function checkUser() {
@@ -31,9 +39,74 @@ export default function Customer() {
         setLoading(false);
       }
     }
-
+  
+    async function checkTelephone() {
+      try {
+        const { data, error: userError } = await supabase
+          .from("users")
+          .select("Tel_Phone")
+          .eq("User_ID", getUserID())
+          .single();
+  
+        if (userError) {
+          throw userError;
+        }
+  
+        setTelephone(data?.Tel_Phone || "");
+      } catch (error) {
+        console.error("An error occurred fetching the telephone number:", error);
+      }
+    }
+  
+    async function checkBlacklist() {
+      try {
+        const { data, error: userError } = await supabase
+          .from("users")
+          .select("User_Ticket")
+          .eq("User_ID", getUserID())
+          .single();
+  
+        if (userError) {
+          throw userError;
+        }
+  
+        const userTicket = data?.User_Ticket;
+  
+        if (userTicket > 2) {
+          Swal.fire({
+            title: 'ติด Blacklist',
+            text: 'คุณติด Blacklist แล้ว หากต้องการใช้บริการใหม่อีกครั้ง กรุณาไปยืนยันที่หน้าร้าน!!',
+            icon: 'warning',
+            timer: 5000,
+            timerProgressBar: true,
+            showConfirmButton: false
+          }).then(() => {
+            setTimeout(() => {
+              liff.closeWindow();
+            }, 5000);
+          });
+          
+        }else if (userTicket != 0){
+          const total = 3 - userTicket;
+          Swal.fire({
+            title: 'เตือน!!',
+            html: `คุณติด Blacklist แล้วจำนวน ${userTicket} ครั้ง<br>คุณเหลือโอกาสอีก ${total} ครั้ง`,
+            icon: 'warning',
+            showConfirmButton: true,
+            confirmButtonColor: '#36A71C',
+            confirmButtonText: 'ตกลง'
+          });
+        }
+      } catch (error) {
+        console.error("An error occurred fetching the blacklist:", error);
+      }
+    }
+  
     checkUser();
+    checkTelephone();
+    checkBlacklist();
   }, []);
+  
 
   if (loading) {
     return <Loading />;
@@ -122,6 +195,8 @@ export default function Customer() {
       </header>
 
       <main className="animate-fade-up animate-duration-[1000ms]">
+        {telephone == "" && <ModalTelphone />}
+
         {/* Promotions  */}
         <section className="mt-8 flex justify-center mx-6">
           <div className="max-w-sm">
@@ -158,7 +233,9 @@ export default function Customer() {
         {/* Show Product Hot */}
         <section>
           <div className="flex items-center justify-between mx-6 mt-7">
-            <div className="font-DB_Med text-2xl animate-wiggle animate-duration-[1000ms] animate-infinite animate-ease-in-out">เมนูขายดี🔥</div>
+            <div className="font-DB_Med text-2xl animate-wiggle animate-duration-[1000ms] animate-infinite animate-ease-in-out">
+              เมนูขายดี🔥
+            </div>
             <Link
               href="customer/pages/product"
               className="inline-block bg-green-500 hover:bg-green-600 text-white text-sm font-DB_Med py-1 px-3 rounded-2xl"

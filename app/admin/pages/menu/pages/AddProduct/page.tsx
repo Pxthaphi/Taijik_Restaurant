@@ -90,7 +90,10 @@ export default function Add_Product() {
       // Upload image to Supabase storage
       const { error: uploadError } = await supabase.storage
         .from("Product")
-        .upload(fileName, file);
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
 
       if (uploadError) {
         throw uploadError;

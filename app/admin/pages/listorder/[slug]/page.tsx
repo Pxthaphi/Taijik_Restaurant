@@ -5,6 +5,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import Modal_CancelOrder from "./components/modal-cancel";
 import Swal from "sweetalert2";
+import { Avatar } from "@nextui-org/react";
+import Link from "next/link";
 
 interface PageProps {
   params: {
@@ -29,8 +31,8 @@ interface OrderProduct {
   Product_ID: number;
   Product_Qty: number;
   Product_Size: string;
-  Product_Meat: number;
-  Product_Option: number;
+  Product_Meat: number | number[]; // Adjusted to handle both single values and arrays
+  Product_Option: number | number[]; // Adjusted to handle both single values and arrays
   Product_Detail: string;
   Total_Price: number;
 }
@@ -48,7 +50,7 @@ interface Product {
 
 interface Meat {
   Meat_ID: number;
-  Meat_Name: string;
+  Meat_Name: string; // Changed to string as it's more typical for a single name
   Meat_Price: number;
 }
 
@@ -61,7 +63,7 @@ interface FoodOption {
 interface MergedProduct extends OrderProduct {
   Product_Name: string;
   Product_Image: string;
-  Meat_Name: string;
+  Meat_Names: string[]; // Corrected to match the expected array
   Option_Names: string[];
 }
 
@@ -77,13 +79,60 @@ export default function ListOrder_Status({ params }: PageProps) {
   const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
   const [userName, setUserName] = useState<string>("");
+  const [userPicture, setUserPicture] = useState<string>("");
   const [orderStatusName, setOrderStatusName] = useState<string>("");
   const [orderStatus, setOrderStatus] = useState(1);
+  const [lastNotifiedStatus, setLastNotifiedStatus] = useState(0); // เริ่มต้นด้วยค่า 0 หรือ null
   const [products, setProducts] = useState<MergedProduct[]>([]);
   const [quantityMap, setQuantityMap] = useState<{ [key: string]: number }>({});
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [cancelOrderId, setCancelOrderId] = useState<string>("");
+  const [userID, setuserID] = useState<string>("");
+  const [telephone, setTelephone] = useState<string>("");
+
+  let Status_text = "";
+  let Status_detail = "";
+  let Status_image = "";
+  let Status_textcolor = "";
+
+  if (orderStatus == 1) {
+    Status_text = "รอการยืนยันคำสั่งซื้อจากทางร้าน";
+    Status_textcolor = "#008DDA";
+    Status_detail = "กำลังรอดำเนินการ......";
+    Status_image =
+      "https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/waiting_order.png";
+  } else if (orderStatus == 2) {
+    Status_text = "กำลังจัดเตรียมเมนูอาหาร";
+    Status_textcolor = "#e35a20";
+    Status_detail = "กำลังรอดำเนินการ อาจจะใช้เวลานานกว่ากำหนดการ......";
+    Status_image =
+      "https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/preparing_order.png";
+  } else if (orderStatus == 3) {
+    Status_text = "เตรียมเมนูอาหารเสร็จสิ้น";
+    Status_textcolor = "#269117";
+    Status_detail = "กรุณาเดินทางเข้ามารับเมนูอาหารของท่าน";
+    Status_image =
+      "https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/success_prepare.png";
+  } else if (orderStatus == 4) {
+    Status_text = "คำสั่งซื้อเสร็จสิ้น";
+    Status_textcolor = "#269117";
+    Status_detail = "ขอบคุณที่ใช้บริการร้านอาหารใต้จิกค่ะ";
+    Status_image =
+      "https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/success_order.png";
+  } else if (orderStatus == 5) {
+    Status_text = "ยกเลิกคำสั่งซื้อ";
+    Status_textcolor = "#E11212";
+    Status_detail = "ทางร้านขออภัยหากเกิดมีข้อผิดพลาดประการใด";
+    Status_image =
+      "https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/failed_order.png";
+  } else {
+    Status_text = "เกิดข้อผิดพลาดในการสั่งอาหาร";
+    Status_textcolor = "#E11212";
+    Status_detail = "กรุณาลองสั่งอาหารใหม่อีกครั้งค่ะ";
+    Status_image =
+      "https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/failed_order.png";
+  }
 
   useEffect(() => {
     const deleteQueueEntry = async () => {
@@ -93,107 +142,97 @@ export default function ListOrder_Status({ params }: PageProps) {
           .from("queue")
           .delete()
           .eq("Order_ID", params.slug);
-  
+
         if (queueError) {
           throw queueError;
         }
-  
+
         console.log("delete data from queue success");
       }
     };
-  
+
     deleteQueueEntry();
   }, [orderStatus]);
-  
+
   useEffect(() => {
     const fetchOrderData = async () => {
-      const { data: orderData, error: orderError } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("Order_ID", params.slug)
-        .single();
-
-      if (orderError) {
-        console.error(orderError);
-        return;
-      }
-
-      // Type orderData to ensure Order_Status is a valid key of statusNames
-      const typedOrderData = orderData as Order;
-
-      // Fetch user data based on User_ID from the order
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("User_Name")
-        .eq("User_ID", typedOrderData.User_ID)
-        .single();
-
-      if (userError) {
-        console.error(userError);
-        return;
-      }
-
-      setUserName(userData?.User_Name || "");
-
-      // Set order status name based on Order_Status
-      setOrderStatusName(statusNames[typedOrderData.Order_Status] || "");
-      setOrderStatus(typedOrderData.Order_Status);
-
-      const { data: orderProductsData, error: orderProductsError } =
-        await supabase
-          .from("order_products")
+      try {
+        const { data: orderData, error: orderError } = await supabase
+          .from("orders")
           .select("*")
-          .eq("Order_ID", params.slug);
+          .eq("Order_ID", params.slug)
+          .single();
 
-      if (orderProductsError) {
-        console.error(orderProductsError);
-        return;
-      }
+        if (orderError) throw orderError;
 
-      const productIds = orderProductsData.map((op) => op.Product_ID);
-      const meatIds = orderProductsData.map((op) => op.Product_Meat);
-      const optionIds = orderProductsData.map((op) => op.Product_Option);
+        const typedOrderData = orderData as Order;
 
-      const { data: productsData, error: productsError } = await supabase
-        .from("products")
-        .select("*")
-        .in("Product_ID", productIds);
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("User_ID, User_Name, User_Picture, Tel_Phone")
+          .eq("User_ID", typedOrderData.User_ID)
+          .single();
 
-      if (productsError) {
-        console.error(productsError);
-        return;
-      }
+        if (userError) throw userError;
 
-      const { data: meatsData, error: meatsError } = await supabase
-        .from("product_meat")
-        .select("*")
-        .in("Meat_ID", meatIds);
+        setuserID(userData?.User_ID || "");
+        setUserName(userData?.User_Name || "");
+        setUserPicture(userData?.User_Picture || "");
+        setTelephone(userData?.Tel_Phone || "");
 
-      if (meatsError) {
-        console.error(meatsError);
-        return;
-      }
+        setOrderStatusName(statusNames[typedOrderData.Order_Status] || "");
+        setOrderStatus(typedOrderData.Order_Status);
 
-      const { data: optionsData, error: optionsError } = await supabase
-        .from("product_option")
-        .select("*")
-        .in("Option_ID", optionIds);
+        const { data: orderProductsData, error: orderProductsError } =
+          await supabase
+            .from("order_products")
+            .select("*")
+            .eq("Order_ID", params.slug);
 
-      if (optionsError) {
-        console.error(optionsError);
-        return;
-      }
+        if (orderProductsError) throw orderProductsError;
 
-      const mergedProducts = orderProductsData.map(
-        (orderProduct: OrderProduct) => {
+        const productIds = orderProductsData.map((op) => op.Product_ID);
+        const meatIds = orderProductsData.flatMap((op) =>
+          Array.isArray(op.Product_Meat) ? op.Product_Meat : [op.Product_Meat]
+        );
+        const optionIds = orderProductsData.flatMap((op) =>
+          Array.isArray(op.Product_Option) ? op.Product_Option : [op.Product_Option]
+        );
+
+        const { data: productsData, error: productsError } = await supabase
+          .from("products")
+          .select("*")
+          .in("Product_ID", productIds);
+
+        if (productsError) throw productsError;
+
+        const { data: meatsData, error: meatsError } = await supabase
+          .from("product_meat")
+          .select("*")
+          .in("Meat_ID", meatIds);
+
+        if (meatsError) throw meatsError;
+
+        const { data: optionsData, error: optionsError } = await supabase
+          .from("product_option")
+          .select("*")
+          .in("Option_ID", optionIds);
+
+        if (optionsError) throw optionsError;
+
+        const mergedProducts = orderProductsData.map((orderProduct: OrderProduct) => {
           const product = productsData.find(
             (p) => p.Product_ID === orderProduct.Product_ID
           );
-          const meatData = meatsData.find(
-            (meat) => meat.Meat_ID === orderProduct.Product_Meat
-          );
 
-          // Convert Product_Option from number to array of numbers
+          const meatIds = Array.isArray(orderProduct.Product_Meat)
+            ? orderProduct.Product_Meat
+            : [orderProduct.Product_Meat];
+
+          const meatNames = meatsData
+            .filter((meat) => meatIds.includes(meat.Meat_ID))
+            .map((meat) => meat.Meat_Name);
+
           const productOptionIds = Array.isArray(orderProduct.Product_Option)
             ? orderProduct.Product_Option
             : [orderProduct.Product_Option];
@@ -206,25 +245,28 @@ export default function ListOrder_Status({ params }: PageProps) {
             ...orderProduct,
             Product_Name: product?.Product_Name || "",
             Product_Image: product?.Product_Image || "",
-            Meat_Name: meatData?.Meat_Name || "",
-            Option_Names: optionNames, // Ensure optionNames is always an array
+            Meat_Names: meatNames,
+            Option_Names: optionNames,
           };
-        }
-      );
+        });
 
-      setOrder(typedOrderData);
-      setProducts(mergedProducts);
+        setOrder(typedOrderData);
+        setProducts(mergedProducts);
 
-      const quantityMapFromResponse = orderProductsData.reduce(
-        (map, product) => {
-          map[product.Product_ID] = product.Product_Qty;
-          return map;
-        },
-        {}
-      );
+        const quantityMapFromResponse = orderProductsData.reduce(
+          (map, product) => {
+            map[product.Product_ID] = product.Product_Qty;
+            return map;
+          },
+          {}
+        );
 
-      setQuantityMap(quantityMapFromResponse);
-      setLoading(false);
+        setQuantityMap(quantityMapFromResponse);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchOrderData();
@@ -244,13 +286,13 @@ export default function ListOrder_Status({ params }: PageProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [params.slug, supabase]);
+  }, [params.slug]);
 
   const openModalCancel = (orderId: string) => {
     setCancelOrderId(orderId);
     setIsModalOpen(true);
   };
-  const handleChangeStauts = async () => {
+  const handleChangeStatus = async () => {
     Swal.fire({
       title: "ต้องการที่จะเปลี่ยนสถานะ??",
       text: "ถ้าหากเปลี่ยนสถานะแล้ว จะไม่สามารถย้อนกลับได้อีก",
@@ -262,14 +304,19 @@ export default function ListOrder_Status({ params }: PageProps) {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
+          const newStatus = orderStatus + 1;
+
           const { data, error } = await supabase
             .from("orders")
-            .update({ Order_Status: orderStatus + 1 })
+            .update({ Order_Status: newStatus })
             .eq("Order_ID", params.slug);
 
           if (error) {
             throw error;
           }
+
+          // อัปเดตค่า orderStatus ให้เป็นสถานะใหม่
+          setOrderStatus(newStatus);
 
           Swal.fire({
             title: "เปลี่ยนสถานะคำสั่งซื้อสำเร็จ!",
@@ -290,7 +337,21 @@ export default function ListOrder_Status({ params }: PageProps) {
     });
   };
 
-  
+  // useEffect to send a notification after orderStatus has changed
+  useEffect(() => {
+    const sendNotification = async () => {
+      if (orderStatus && orderStatus !== lastNotifiedStatus) {
+        try {
+          await sendOrderNotification();
+          setLastNotifiedStatus(orderStatus); // อัปเดตสถานะที่ส่งการแจ้งเตือนล่าสุด
+        } catch (error) {
+          console.error("Error sending order notification:", error);
+        }
+      }
+    };
+
+    sendNotification();
+  }, [orderStatus, lastNotifiedStatus]);
 
   const calculateTotalPrice = () => {
     return products.reduce((total, product) => {
@@ -318,6 +379,259 @@ export default function ListOrder_Status({ params }: PageProps) {
         return "bg-gray-400"; // สีเทาเป็นค่าเริ่มต้นหากไม่ระบุสถานะ
     }
   }
+
+  const sendOrderNotification = async () => {
+    const userId = userID;
+
+    if (!userId) {
+      console.error("User ID is not available");
+      return;
+    }
+
+    // สร้างรายการอาหาร
+    const orderItems = products.map((product) => {
+      const quantity = quantityMap[product.Product_ID] || 1; // ค่าเริ่มต้นเป็น 1 ถ้าจำนวนไม่ระบุ
+      const meatText = product.Meat_Names
+        ? ` (${product.Meat_Names})`
+        : "";
+      const optionsText = product.Option_Names
+        ? ` (เพิ่ม ${product.Option_Names})`
+        : "";
+
+      return {
+        type: "box",
+        layout: "horizontal",
+        contents: [
+          {
+            type: "text",
+            text: `${product.Product_Name} ${meatText} ${optionsText} x ${quantity}`,
+            flex: 0,
+            size: "sm",
+          },
+          {
+            type: "text",
+            text: `฿${product.Total_Price * quantity}`,
+            align: "end",
+            offsetEnd: "10px",
+            color: "#399918",
+          },
+        ],
+      };
+    });
+
+    // คำนวณส่วนลดและราคาสุทธิ
+    const discount = 0; // สมมุติส่วนลดเป็น 0
+    const totalPrice = products.reduce((sum, product) => {
+      const quantity = quantityMap[product.Product_ID] || 1;
+      return sum + product.Total_Price * quantity;
+    }, 0);
+    const finalPrice = totalPrice - discount;
+
+    // Flex Message ข้อความ
+    const message = [
+      {
+        type: "flex",
+        altText: `ร้านอาหารใต้จิก : คำสั่งซื้อ [${params.slug}] | สถานะคำสั่งซื้อ ${Status_text}`,
+        contents: {
+          type: "bubble",
+          body: {
+            type: "box",
+            layout: "vertical",
+            spacing: "md",
+            contents: [
+              {
+                type: "image",
+                url: "https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/bg_order.png",
+                size: "full",
+                aspectRatio: "20:13",
+                aspectMode: "cover",
+                animated: true,
+              },
+              {
+                type: "box",
+                layout: "horizontal",
+                contents: [
+                  {
+                    type: "image",
+                    url: `${Status_image}`,
+                    size: "full",
+                    margin: "15px",
+                    animated: true,
+                  },
+                ],
+                width: "180px",
+                position: "absolute",
+                offsetStart: "65px",
+                offsetTop: "27px",
+                height: "190px",
+                justifyContent: "center",
+              },
+              {
+                type: "text",
+                text: "ร้านอาหารใต้จิก",
+                offsetStart: "5px",
+                size: "xs",
+                weight: "bold",
+                offsetTop: "5px",
+                color: "#4f4f4f",
+                align: "start",
+              },
+              {
+                type: "text",
+                size: "lg",
+                weight: "bold",
+                wrap: true,
+                align: "start",
+                color: `${Status_textcolor}`,
+                text: `${Status_text}`,
+                margin: "10px",
+                decoration: "none",
+                offsetStart: "5px",
+                style: "normal",
+              },
+              {
+                type: "box",
+                layout: "horizontal",
+                contents: [
+                  {
+                    type: "text",
+                    text: "เลขคำสั่งซื้อ",
+                    color: "#555555",
+                    size: "sm",
+                    flex: 1,
+                    weight: "bold",
+                  },
+                  {
+                    type: "text",
+                    text: `${params.slug}`, // ตรวจสอบว่า Order_ID มีค่าก่อนใช้
+                    color: "#555555",
+                    size: "sm",
+                    weight: "bold",
+                    flex: 2,
+                  },
+                ],
+                offsetStart: "5px",
+              },
+              {
+                type: "separator",
+                margin: "lg",
+              },
+              {
+                type: "box",
+                layout: "vertical",
+                contents: orderItems,
+                spacing: "xs",
+                margin: "xxl",
+                offsetStart: "5px",
+              },
+              {
+                type: "separator",
+                margin: "xl",
+              },
+              {
+                type: "box",
+                layout: "vertical",
+                contents: [
+                  {
+                    type: "box",
+                    layout: "horizontal",
+                    contents: [
+                      {
+                        type: "text",
+                        text: "ส่วนลด",
+                        color: "#c21313",
+                        offsetStart: "5px",
+                        align: "start",
+                        weight: "bold",
+                        size: "md",
+                      },
+                      {
+                        type: "text",
+                        text: `-฿${discount}`,
+                        offsetEnd: "5px",
+                        align: "end",
+                        color: "#c21313",
+                        size: "md",
+                      },
+                    ],
+                    paddingBottom: "10px",
+                    paddingTop: "5px",
+                  },
+                  {
+                    type: "box",
+                    layout: "horizontal",
+                    contents: [
+                      {
+                        type: "text",
+                        text: "ราคาสุทธิ",
+                        offsetStart: "5px",
+                        size: "md",
+                        weight: "bold",
+                        color: "#269117",
+                      },
+                      {
+                        type: "text",
+                        text: `฿${finalPrice}`,
+                        offsetEnd: "5px",
+                        align: "end",
+                        color: "#269117",
+                        weight: "regular",
+                        size: "md",
+                      },
+                    ],
+                    paddingBottom: "10px",
+                  },
+                ],
+              },
+            ],
+            paddingAll: "10px",
+            backgroundColor: "#ffffff",
+          },
+          footer: {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "button",
+                style: "primary",
+                color: "#88D66C",
+                action: {
+                  type: "uri",
+                  label: "ดูสถานะคำสั่งซื้อ",
+                  uri: `https://liff.line.me/2004539512-7wZyNkj0/customer/pages/product/order_product/${params.slug}`,
+                },
+                height: "sm",
+                gravity: "center",
+              },
+            ],
+            maxWidth: "190px",
+            offsetStart: "50px",
+            margin: "lg",
+          },
+        },
+      },
+    ];
+
+    try {
+      const response = await fetch("/api/sendFlexMessage", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId, message }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log(data.message);
+      } else {
+        console.error("Failed to send notification:", data.error);
+      }
+    } catch (error) {
+      console.error("Error sending notification:", error);
+    }
+  };
 
   if (loading) {
     return (
@@ -407,7 +721,25 @@ export default function ListOrder_Status({ params }: PageProps) {
           </div>
           <div className="flex item-center mt-5">
             <p className="text-lg font-DB_Med me-[5.2rem]">ชื่อผู้สั่ง</p>
-            <p className="text-lg font-DB_Med">{userName}</p>
+            <div className="flex justify-center items-center me-[1.5rem]">
+              <Avatar src={userPicture} className="w-7 h-7 me-2" />
+              <p className="text-lg font-DB_Med">{userName}</p>
+            </div>
+            <Link href={`tel:${telephone}`} className="flex justify-center items-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="1em"
+                height="1em"
+                viewBox="0 0 24 24"
+                className="w-7 h-7 text-white rounded-2xl bg-green-500 px-1 py-1 me-1"
+              >
+                <path
+                  fill="currentColor"
+                  d="M5 9.86a18.47 18.47 0 0 0 9.566 9.292l.68.303a3.5 3.5 0 0 0 4.33-1.247l.889-1.324a1 1 0 0 0-.203-1.335l-3.012-2.43a1 1 0 0 0-1.431.183l-.932 1.257a12.14 12.14 0 0 1-5.51-5.511l1.256-.932a1 1 0 0 0 .183-1.431l-2.43-3.012a1 1 0 0 0-1.335-.203l-1.333.894a3.5 3.5 0 0 0-1.237 4.355z"
+                />
+              </svg>
+              <p className="text-sm font-DB_v4 pt-1">โทรเลย</p>
+            </Link>
           </div>
         </section>
 
@@ -420,13 +752,13 @@ export default function ListOrder_Status({ params }: PageProps) {
                 <div className="w-1/3 ms-2">
                   <img
                     className="w-18 h-18 object-cover rounded-xl"
-                    src={product.Product_Image}
-                    alt="Product Image"
+                    src={`${product.Product_Image}?t=${new Date().getTime()}`}
+                    alt={product.Product_Name}
                   />
                 </div>
                 <div className="w-1/2 ms-4 pt-1">
                   <h3 className="text-lg font-DB_Med text-gray-700">
-                    {product.Product_Name} ({product.Meat_Name})
+                    {product.Product_Name} ({product.Meat_Names.join(", ")})
                   </h3>
                   {product.Option_Names.length > 0 && (
                     <p className="text-sm text-gray-500 font-DB_v4">
@@ -456,7 +788,7 @@ export default function ListOrder_Status({ params }: PageProps) {
           {products.map((product) => (
             <div key={product.Product_ID} className="flex justify-between mt-3">
               <div className="text-base text-gray-800 font-DB_Med">
-                {product.Product_Name} ({product.Meat_Name}) (เพิ่ม{" "}
+                {product.Product_Name} ({product.Meat_Names.join(", ")}) (เพิ่ม{" "}
                 {product.Option_Names.join(", ")}) x{" "}
                 {quantityMap[product.Product_ID]}
               </div>
@@ -524,7 +856,7 @@ export default function ListOrder_Status({ params }: PageProps) {
                 ยกเลิกคำสั่งซื้อ
               </button>
               <button
-                onClick={handleChangeStauts}
+                onClick={handleChangeStatus}
                 className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white rounded-full py-4 px-8 text-lg font-DB_Med"
               >
                 <svg
@@ -546,7 +878,7 @@ export default function ListOrder_Status({ params }: PageProps) {
           {orderStatus == 2 && (
             <div>
               <button
-                onClick={handleChangeStauts}
+                onClick={handleChangeStatus}
                 className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white rounded-full py-4 px-8 text-lg font-DB_Med"
               >
                 <svg
@@ -568,7 +900,7 @@ export default function ListOrder_Status({ params }: PageProps) {
           {orderStatus == 3 && (
             <div>
               <button
-                onClick={handleChangeStauts}
+                onClick={handleChangeStatus}
                 className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white rounded-full py-4 px-8 text-lg font-DB_Med"
               >
                 <svg

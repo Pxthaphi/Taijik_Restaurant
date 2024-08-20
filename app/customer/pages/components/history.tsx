@@ -159,7 +159,7 @@ function ProductCard({ orderProduct }: { orderProduct: OrderProduct }) {
 
         <img
           className="w-full h-24 object-cover"
-          src={orderProduct.Product_Image} // Use Product_Image field as image source
+          src={`${orderProduct.Product_Image}?t=${new Date().getTime()}`}
           alt={orderProduct.Product_Name}
         />
         <div className="px-3 py-2">

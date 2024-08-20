@@ -16,7 +16,7 @@ interface ProductDetail {
   Product_Name: string;
   Product_Qty: number;
   Product_Size: string;
-  Meat_Name: string;
+  Meat_Name: string[];
   Option_Names: string[]; // Updated to be an array
   Total_Price: number;
 }
@@ -111,9 +111,16 @@ export default function List_Order() {
           const product = products.find(
             (p: any) => p.Product_ID === op.Product_ID
           );
-          const meat = productMeats.find(
-            (m: any) => m.Meat_ID === op.Product_Meat
-          );
+          const meatNames = op.Product_Meat.map((meatID: bigint, index : number) => {
+            const meat = productMeats.find(
+              (m) => m.Meat_ID === meatID
+            );
+            return meat
+              ? index === 0
+                ? meat.Meat_Name
+                : `, ${meat.Meat_Name}`
+              : "No meat";
+          });
 
           const optionNames = op.Product_Option.map(
             (optionID: bigint, index: number) => {
@@ -133,8 +140,8 @@ export default function List_Order() {
             Product_Name: product?.Product_Name,
             Product_Qty: op.Product_Qty,
             Product_Size: op.Product_Size,
-            Meat_Name: meat ? meat.Meat_Name : "No meat",
-            Option_Names: optionNames,
+            Meat_Name: meatNames.length > 0 ? meatNames.join('') : "No meat",
+            Option_Names: optionNames.join(''),
             Total_Price: op.Total_Price,
           };
         });

@@ -17,7 +17,7 @@ interface ProductDetail {
   Product_Name: string;
   Product_Qty: number;
   Product_Size: string;
-  Meat_Name: string;
+  Meat_Name: string[]; // Updated to be an array
   Option_Names: string[]; // Updated to be an array
   Total_Price: number;
 }
@@ -114,30 +114,35 @@ export default function HistoryOrder() {
           const product = products.find(
             (p: any) => p.Product_ID === op.Product_ID
           );
-          const meat = productMeats.find(
-            (m: any) => m.Meat_ID === op.Product_Meat
-          );
 
-          const optionNames = op.Product_Option.map(
-            (optionID: bigint, index: number) => {
-              const option = productOptions.find(
-                (o: any) => o.Option_ID === optionID
-              );
-              return option
-                ? index === 0
-                  ? option.Option_Name
-                  : `, ${option.Option_Name}`
-                : "No option";
-            }
-          );
+          // Handle multiple meats
+          const meatNames = Array.isArray(op.Product_Meat)
+            ? op.Product_Meat.map((meatID: any) => {
+                const meat = productMeats.find(
+                  (m: any) => m.Meat_ID === meatID
+                );
+                return meat ? meat.Meat_Name : "No meat";
+              }).join(", ") // Join meat names with a comma
+            : [
+                productMeats.find((m: any) => m.Meat_ID === op.Product_Meat)
+                  ?.Meat_Name || "No meat",
+              ].join(", "); // Join single meat name with a comma
+
+          // Handle product options
+          const optionNames = op.Product_Option.map((optionID: bigint) => {
+            const option = productOptions.find(
+              (o: any) => o.Option_ID === optionID
+            );
+            return option ? option.Option_Name : "No option";
+          }).join(", "); // Join option names with a comma
 
           return {
             Product_ID: product?.Product_ID,
             Product_Name: product?.Product_Name,
             Product_Qty: op.Product_Qty,
             Product_Size: op.Product_Size,
-            Meat_Name: meat ? meat.Meat_Name : "No meat",
-            Option_Names: optionNames,
+            Meat_Name: meatNames, // Meat names as a single string
+            Option_Names: optionNames, // Option names as a single string
             Total_Price: op.Total_Price,
           };
         });
