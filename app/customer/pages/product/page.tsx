@@ -1,12 +1,23 @@
 "use client";
 import { useState, useEffect } from "react";
 import Product from "../components/product";
+import Product_Hot from "../../components/product_hot";
 import Link from "next/link";
 import History_Order from "../components/history";
 import Product_Type from "../components/product_type";
 import { useRouter } from "next/navigation";
 import { getUserID } from "@/app/auth/getUserID";
+import { PostgrestError } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Divider } from "@nextui-org/react";
 
 interface Product {
   User_ID: string;
@@ -14,11 +25,19 @@ interface Product {
   Product_Qty: number;
 }
 
+interface ProductType {
+  Type_ID: number;
+  Type_Name: string;
+  Type_Icon: string;
+}
+
 export default function Show_Product() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [productType, setProductType] = useState<ProductType[]>([]);
   const [totalQty, setTotalQty] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const userID = getUserID();
   const router = useRouter();
@@ -53,13 +72,41 @@ export default function Show_Product() {
       }
     };
 
+    async function fetchType() {
+      try {
+        // Fetch necessary columns including Product_Image
+        const { data, error } = await supabase.from("product_type").select("*");
+
+        if (error) {
+          throw error;
+        } else {
+          setProductType(data as ProductType[]);
+          console.table(data);
+        }
+      } catch (error) {
+        setError((error as PostgrestError).message);
+      }
+    }
+
     if (userID) {
       fetchProductsFromCart();
     }
+
+    fetchType();
   }, [userID]);
 
+  // ฟังก์ชันเพื่อเปิด sheet
+  const openSheet = () => {
+    setIsSheetOpen(true);
+  };
+
+  // ฟังก์ชันเพื่อปิด sheet
+  const closeSheet = () => {
+    setIsSheetOpen(false);
+  };
+
   const goBack = () => {
-    router.push("../")
+    router.push("../");
   };
 
   return (
@@ -134,16 +181,113 @@ export default function Show_Product() {
       <section className="animate-fade-up animate-duration-[1000ms]">
         <div className="flex items-center justify-between mx-6 mt-7">
           <div className="font-DB_Med text-xl">ประเภทเมนูอาหาร</div>
-          <Link
-            href=""
+          <button
+            onClick={openSheet} // เรียกใช้ฟังก์ชันเพื่อเปิด sheet เมื่อคลิก
             className="inline-block bg-green-500 hover:bg-green-600 text-white text-xs font-DB_Med py-1 px-3 rounded-2xl"
           >
             ดูทั้งหมด
-          </Link>
+          </button>
         </div>
-        <div className="mx-6 mt-6">
-          <Product_Type />
-        </div>
+
+        {/* Sheet จะถูกแสดงเมื่อ isSheetOpen เป็น true */}
+        {isSheetOpen && (
+          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+            <SheetContent side={"bottom"} className="rounded-t-2xl px-4">
+              <SheetHeader className="">
+                <SheetTitle>
+                  <h1 className="font-DB_v4 text-lg text-gray-800">ตัวกรอง</h1>
+                </SheetTitle>
+              </SheetHeader>
+              <Divider className="my-4" />
+
+              <SheetDescription>
+                <div className="space-y-4">
+                  {/* ร้านอาหารที่เปิดเท่านั้น */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-base font-DB_Med text-gray-800">
+                      เมนูอาหารที่มีเหลืออยู่เท่านั้น
+                    </span>
+                    <input
+                      type="checkbox"
+                      className="form-checkbox h-5 w-5 text-green-500"
+                    />
+                  </div>
+
+                  {/* โปรโมชั่น */}
+                  {/* <div>
+                  <h3 className="text-base font-DB_Med text-gray-800">โปรโมชั่น</h3>
+                  <p className="text-sm text-gray-600">เก็บโค้ดลดเพิ่ม</p>
+                </div> */}
+
+                  {/* ราคา */}
+                  <div>
+                    <h3 className="text-base font-DB_Med text-gray-800">
+                      ราคา
+                    </h3>
+                    <div className="flex space-x-2 mt-2">
+                      {[...Array(5)].map((_, index) => (
+                        <button
+                          key={index}
+                          className="px-3 py-1 border rounded text-gray-800 font-DB_Med"
+                        >
+                          ฿{index + 1}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ประเภทอาหาร */}
+                  <div>
+                    <h3 className="text-base font-DB_Med text-gray-800">
+                      ประเภทอาหาร
+                    </h3>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {[
+                        "สตรีทฟู้ด/รถเข็น",
+                        "ชานมไข่มุก",
+                        "อาหารญี่ปุ่น",
+                        "อาหารอีสาน",
+                        "อาหารไทย",
+                        "อาหารทะเล",
+                        "อาหารเช้า",
+                        "ก๋วยเตี๋ยว",
+                        "ของหวาน",
+                        "ร้านกาแฟ",
+                        "เบเกอรี่ เค้ก",
+                        "อาหารตามสั่ง",
+                        "อาหารจีน",
+                        "อาหารจานเดียว",
+                        "ข้าวต้ม",
+                        "ฟาสต์ฟู้ด",
+                        "อาหารเวียดนาม",
+                        "ซูชิ",
+                        "อาหารคลีน/สลัด",
+                        "ติ่มซำ",
+                      ].map((type, index) => (
+                        <button
+                          key={index}
+                          className="px-4 py-1 border rounded text-gray-800 text-sm"
+                        >
+                          <p className="font-DB_v4">{type}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </SheetDescription>
+
+              {/* Action Buttons */}
+              <div className="flex justify-between mt-8 px-4">
+                <button className="w-[48%] py-2 border rounded-xl shadow-sm text-gray-800 font-DB_Med">
+                  ล้างค่า
+                </button>
+                <button className="w-[48%] py-2 bg-green-500 text-white rounded-xl shadow-lg font-DB_Med">
+                  ค้นหา
+                </button>
+              </div>
+            </SheetContent>
+          </Sheet>
+        )}
       </section>
 
       {/* รายการอาหารที่เคยซื้อ */}
@@ -162,15 +306,36 @@ export default function Show_Product() {
         </div>
       </section>
 
-      {/* รายการอาหาร */}
+      {/* รายการอาหารขายดี */}
       <section className="animate-fade-up animate-duration-[1000ms]">
         <div className="flex items-center justify-between mx-6 mt-7">
-          <div className="font-DB_Med text-xl">เมนูอาหาร</div>
+          <div className="font-DB_Med text-xl">เมนูอาหาร ขายดี</div>
         </div>
 
         <div className="mx-6 mt-6 my-9">
-          <Product />
+          <Product_Hot />
         </div>
+      </section>
+
+      {/* แยกแต่ละประเภทเมนูอาหาร */}
+      <section className="animate-fade-up animate-duration-[1000ms]">
+        {productType.length > 0 ? (
+          productType.map((type) => (
+            <div key={type.Type_ID} className="mb-10">
+              {/* Category Header */}
+              <div className="flex items-center justify-between mx-6 mt-7">
+                <div className="font-DB_Med text-xl">{type.Type_Name}</div>
+              </div>
+
+              {/* Product List */}
+              <div className="mx-6 mt-6 my-9">
+                <Product typeId={type.Type_ID} />
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="text-center">No categories available</p>
+        )}
       </section>
 
       {totalQty > 0 && (

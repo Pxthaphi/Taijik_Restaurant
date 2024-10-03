@@ -21,6 +21,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/admin/pages/menu/pages/EditProduct/[slug]/components/sunicon.jsx"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/admin/pages/menu/pages/EditProduct/[slug]/components/sunicon.jsx", "app/admin/pages/assets/NotificationIcon.jsx"],
   "exclude": ["node_modules"]
 }

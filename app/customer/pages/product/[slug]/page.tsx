@@ -19,12 +19,25 @@ interface Product {
   Product_Name: string;
   Product_Price: number;
   Product_Image: string;
+  Product_Type: number;
 }
 
 interface Meat {
   Meat_ID: number;
   Meat_Name: string;
   Meat_Price: number;
+}
+
+interface ProductType {
+  Type_ID: number;
+  Type_Name: string;
+  Type_Icon: string;
+}
+
+interface NoodlesType {
+  Noodles_ID: number;
+  Noodles_Name: string;
+  Noodles_Price: number;
 }
 
 interface FoodOption {
@@ -38,17 +51,21 @@ export default function Product_Detail({ params }: PageProps) {
   const [isAnimation, setIsAnimation] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [meats, setMeats] = useState<Meat[]>([]);
+  const [producttype, setProductType] = useState<ProductType[]>([]);
+  const [noodlesType, setnoodlesType] = useState<NoodlesType[]>([]);
   const [options, setOptions] = useState<FoodOption[]>([]);
   const [selectedSize, setSelectedSize] = useState<number>(0);
   const [selectedMeat, setSelectedMeat] = useState<number[]>([]);
   const [selectedOptions, setSelectedOptions] = useState<number[]>([]);
   const [sizeProduct, setSize] = useState("ธรรมดา");
+  const [sizeWater, setSizeWater] = useState("แก้วเล็ก");
   const [productDetail, setProductDetail] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [specialMeatSelected, setSpecialMeatSelected] = useState(false);
-
+  const [typeName, setTypeName] = useState("");
+  const [selectedNoodles, setSelectedNoodles] = useState<number[]>([]);
 
   // Define state to hold the total price
   const [totalPrice, setTotalPrice] = useState<number>(0);
@@ -56,9 +73,10 @@ export default function Product_Detail({ params }: PageProps) {
 
   // Handler to update selected meats with a limit of 3 and special logic
   const handleMeatChange = (values: string[]) => {
-    const selected = values.map(value => parseInt(value));
+    const selected = values.map((value) => parseInt(value));
 
-    if (selected.includes(6)) { // Assuming 1 is the ID for "รวมมิตร"
+    if (selected.includes(6)) {
+      // Assuming 1 is the ID for "รวมมิตร"
       setSpecialMeatSelected(true);
       setSelectedMeat([6]); // Only allow "รวมมิตร" to be selected
     } else {
@@ -79,6 +97,22 @@ export default function Product_Detail({ params }: PageProps) {
     }
   };
 
+  // Handler to update selected noodles with a limit of 2
+  const handleNoodleChange = (values: string[]) => {
+    const selected = values.map((value) => parseInt(value));
+    if (selected.length <= 2) {
+      setSelectedNoodles(selected);
+    } else {
+      Swal.fire({
+        icon: "warning",
+        title: "เตือน!!",
+        text: "สามารถเลือกประเภทเส้นได้สูงสุด 2 อย่าง",
+        confirmButtonText: "ตกลง",
+        confirmButtonColor: "#2AA215",
+      });
+    }
+  };
+
   // Check if the meat with ID 1 ("รวมมิตร") is included in the list of meats
   const isSpecialMeatIncluded = selectedMeat.includes(6);
 
@@ -86,15 +120,32 @@ export default function Product_Detail({ params }: PageProps) {
   const calculateTotalPrice = () => {
     if (products.length > 0) {
       const basePrice = products[0].Product_Price;
+
+      // Calculate meat price
       const meatPrice = selectedMeat.reduce((acc, meatID) => {
         const meat = meats.find((meat) => meat.Meat_ID === meatID);
         return acc + (meat ? meat.Meat_Price : 0);
       }, 0);
+
+      // Calculate options price
       const optionsPrice = selectedOptions.reduce((acc, optionID) => {
         const option = options.find((option) => option.Option_ID === optionID);
         return acc + (option ? option.Option_Price : 0);
       }, 0);
-      return (basePrice + selectedSize + meatPrice + optionsPrice) * quantity;
+
+      // Calculate noodle price
+      const noodlePrice = selectedNoodles.reduce((acc, noodleID) => {
+        const noodle = noodlesType.find(
+          (noodle) => noodle.Noodles_ID === noodleID
+        );
+        return acc + (noodle ? noodle.Noodles_Price : 0); // Adjust `Type_Icon` if you store the noodle price differently
+      }, 0);
+
+      // Return total price
+      return (
+        (basePrice + selectedSize + meatPrice + optionsPrice + noodlePrice) *
+        quantity
+      );
     }
     return 0;
   };
@@ -127,7 +178,9 @@ export default function Product_Detail({ params }: PageProps) {
       // Fetch necessary columns including Product_Image
       const { data, error } = await supabase
         .from("products")
-        .select("Product_ID, Product_Name, Product_Price, Product_Image")
+        .select(
+          "Product_ID, Product_Name, Product_Price, Product_Image, Product_Type"
+        )
         .eq("Product_ID", params.slug);
 
       if (error) {
@@ -183,48 +236,35 @@ export default function Product_Detail({ params }: PageProps) {
     }
   }
 
-  async function pickMenu() {
-    if (!sizeProduct) {
-      Swal.fire({
-        icon: "error",
-        title: "ผิดพลาด",
-        text: "กรุณาเลือกขนาดที่ต้องการ",
-      });
-      return;
-    }
-    if (!selectedMeat) {
-      Swal.fire({
-        icon: "error",
-        title: "ผิดพลาด",
-        text: "กรุณาเลือกเนื้อสัตว์ที่ต้องการ",
-      });
-      return;
-    }
+  async function fetchType() {
     try {
-      const { data, error } = await supabase
-        .from("cart")
-        .insert([
-          {
-            User_ID: userID,
-            Product_ID: params.slug,
-            Product_Qty: quantity,
-            Product_Size: sizeProduct,
-            Product_Meat: selectedMeat,
-            Product_Option: selectedOptions,
-            Product_Detail: productDetail,
-            Total_Price: totalPrice,
-          },
-        ])
-        .select();
+      // Fetch necessary columns including Product_Image
+      const { data, error } = await supabase.from("product_type").select("*");
 
       if (error) {
-        console.error("Error adding product to cart:", error.message);
+        throw error;
       } else {
-        console.log("Product added to cart successfully:", data);
-        window.location.href = "../product";
+        setProductType(data as ProductType[]);
+        console.table(data);
       }
-    } catch (err) {
-      console.error("Unexpected error:", err);
+    } catch (error) {
+      setError((error as PostgrestError).message);
+    }
+  }
+
+  async function fetchNoodles() {
+    try {
+      // Fetch necessary columns including Product_Image
+      const { data, error } = await supabase.from("noodles_type").select("*");
+
+      if (error) {
+        throw error;
+      } else {
+        setnoodlesType(data as NoodlesType[]);
+        console.table(data);
+      }
+    } catch (error) {
+      setError((error as PostgrestError).message);
     }
   }
 
@@ -294,6 +334,9 @@ export default function Product_Detail({ params }: PageProps) {
     fetchProducts();
     fetchMeat();
     fetchOption();
+    fetchType();
+    fetchNoodles();
+    console.log("Noodles Type Data: ", noodlesType);
   }, []);
 
   useEffect(() => {
@@ -302,10 +345,19 @@ export default function Product_Detail({ params }: PageProps) {
 
   useEffect(() => {
     if (selectedSize == 10) {
-      setSize("พิเศษ");
+      if (typeName === "เครื่องดื่ม") {
+        setSizeWater("แก้วใหญ่");
+      } else {
+        setSize("พิเศษ");
+      }
     } else {
-      setSize("ธรรมดา");
+      if (typeName === "เครื่องดื่ม") {
+        setSizeWater("แก้วเล็ก");
+      } else {
+        setSize("ธรรมดา");
+      }
     }
+
     // console.log("size: ", sizeProduct);
     // console.log("Meat: ", selectedMeat);
     // console.log("Option: ", selectedOptions);
@@ -319,6 +371,185 @@ export default function Product_Detail({ params }: PageProps) {
     productDetail,
     totalPrice,
   ]);
+
+  useEffect(() => {
+    if (products.length > 0 && producttype.length > 0) {
+      const product = products[0];
+      const Product_Type = product.Product_Type;
+
+      // Find the matching type in producttype array
+      const matchedType = producttype.find(
+        (type) => type.Type_ID === Product_Type
+      );
+
+      if (matchedType) {
+        const Type_Name = matchedType.Type_Name;
+        setTypeName(Type_Name);
+        console.log("Found Type_Name: ", Type_Name);
+      } else {
+        console.log("ไม่พบข้อมูล Type.");
+      }
+    }
+  }, [products, producttype]);
+
+  async function pickMenu() {
+    if (typeName === "อาหารจานเดียว") {
+      if (!sizeProduct) {
+        Swal.fire({
+          icon: "error",
+          title: "ผิดพลาด",
+          text: "กรุณาเลือกขนาดที่ต้องการ",
+        });
+        return;
+      }
+      if (!selectedMeat) {
+        Swal.fire({
+          icon: "error",
+          title: "ผิดพลาด",
+          text: "กรุณาเลือกเนื้อสัตว์ที่ต้องการ",
+        });
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("cart")
+          .insert([
+            {
+              User_ID: userID,
+              Product_ID: params.slug,
+              Product_Qty: quantity,
+              Product_Size: sizeProduct,
+              Product_Meat: selectedMeat,
+              Product_Option: selectedOptions,
+              Product_Detail: productDetail,
+              Total_Price: totalPrice,
+            },
+          ])
+          .select();
+
+        if (error) {
+          console.error("Error adding product to cart:", error.message);
+        } else {
+          console.log("Product added to cart successfully:", data);
+          window.location.href = "../product";
+        }
+      } catch (err) {
+        console.error("Unexpected error:", err);
+      }
+    } else if (typeName === "ก๋วยเตี๋ยว") {
+      if (!sizeProduct) {
+        Swal.fire({
+          icon: "error",
+          title: "ผิดพลาด",
+          text: "กรุณาเลือกขนาดที่ต้องการ",
+        });
+        return;
+      }
+      if (!selectedMeat) {
+        Swal.fire({
+          icon: "error",
+          title: "ผิดพลาด",
+          text: "กรุณาเลือกเนื้อสัตว์ที่ต้องการ",
+        });
+        return;
+      }
+      if (!selectedNoodles) {
+        Swal.fire({
+          icon: "error",
+          title: "ผิดพลาด",
+          text: "กรุณาเลือกเส้นที่ต้องการ",
+        });
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("cart")
+          .insert([
+            {
+              User_ID: userID,
+              Product_ID: params.slug,
+              Product_Qty: quantity,
+              Product_Size: sizeProduct,
+              Product_Meat: selectedMeat,
+              Product_Option: selectedOptions,
+              Product_Detail: productDetail,
+              Total_Price: totalPrice,
+              Product_Noodles: selectedNoodles,
+            },
+          ])
+          .select();
+
+        if (error) {
+          console.error("Error adding product to cart:", error.message);
+        } else {
+          console.log("Product added to cart successfully:", data);
+          window.location.href = "../product";
+        }
+      } catch (err) {
+        console.error("Unexpected error:", err);
+      }
+    } else if (typeName === "เครื่องดื่ม") {
+      if (!sizeProduct) {
+        Swal.fire({
+          icon: "error",
+          title: "ผิดพลาด",
+          text: "กรุณาเลือกขนาดที่ต้องการ",
+        });
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("cart")
+          .insert([
+            {
+              User_ID: userID,
+              Product_ID: params.slug,
+              Product_Qty: quantity,
+              Product_Size: sizeWater,
+              Product_Detail: productDetail,
+              Total_Price: totalPrice,
+            },
+          ])
+          .select();
+
+        if (error) {
+          console.error("Error adding product to cart:", error.message);
+        } else {
+          console.log("Product added to cart successfully:", data);
+          window.location.href = "../product";
+        }
+      } catch (err) {
+        console.error("Unexpected error:", err);
+      }
+    } else {
+      try {
+        const { data, error } = await supabase
+          .from("cart")
+          .insert([
+            {
+              User_ID: userID,
+              Product_ID: params.slug,
+              Product_Qty: quantity,
+              Product_Detail: productDetail,
+              Total_Price: totalPrice,
+            },
+          ])
+          .select();
+
+        if (error) {
+          console.error("Error adding product to cart:", error.message);
+        } else {
+          console.log("Product added to cart successfully:", data);
+          window.location.href = "../product";
+        }
+      } catch (err) {
+        console.error("Unexpected error:", err);
+      }
+    }
+  }
 
   if (loading) {
     return (
@@ -522,102 +753,287 @@ export default function Product_Detail({ params }: PageProps) {
             </div>
           </section>
 
-          <section>
-            <div className="mx-8 mt-8">
-              <div className="font-DB_Med text-xl">ขนาด</div>
-              <div className="pt-3">
-                <RadioGroup
-                  value={selectedSize.toString()}
-                  onValueChange={(e) => setSelectedSize(parseInt(e))}
-                  color="success"
-                >
+          {typeName == "อาหารจานเดียว" && (
+            <div>
+              <section>
+                <div className="mx-8 mt-8">
+                  <div className="font-DB_Med text-xl">ขนาด</div>
+                  <div className="pt-3">
+                    <RadioGroup
+                      value={selectedSize.toString()}
+                      onValueChange={(e) => setSelectedSize(parseInt(e))}
+                      color="success"
+                    >
+                      <div className="pt-2">
+                        <div className="flex items-center justify-between">
+                          <Radio value="0" className="font-DB_v4">
+                            ธรรมดา
+                          </Radio>
+                          <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
+                            ฿0
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between pt-3">
+                          <Radio value="10" className="font-DB_v4">
+                            พิเศษ
+                          </Radio>
+                          <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
+                            ฿10
+                          </div>
+                        </div>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <div className="mx-8 mt-8">
+                  <div className="font-DB_Med text-xl">
+                    เลือกเนื้อสัตว์ ({selectedMeat.length}/3)
+                  </div>
                   <div className="pt-2">
-                    <div className="flex items-center justify-between">
-                      <Radio value="0" className="font-DB_v4">
-                        ธรรมดา
-                      </Radio>
-                      <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
-                        ฿0
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between pt-3">
-                      <Radio value="10" className="font-DB_v4">
-                        พิเศษ
-                      </Radio>
-                      <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
-                        ฿10
-                      </div>
+                    <div className="mb-4">
+                      <CheckboxGroup
+                        value={selectedMeat.map((meat) => meat.toString())}
+                        onValueChange={handleMeatChange}
+                        color="success"
+                      >
+                        {meats.map((meat) => (
+                          <div
+                            key={meat.Meat_ID}
+                            className="flex items-center justify-between pt-2"
+                          >
+                            <Checkbox
+                              value={`${meat.Meat_ID}`}
+                              className="flex-grow font-DB_v4"
+                              disabled={
+                                meat.Meat_Name === "รวมมิตร"
+                                  ? specialMeatSelected
+                                  : isSpecialMeatIncluded
+                              }
+                            >
+                              {meat.Meat_Name}
+                            </Checkbox>
+                            <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl ml-4">
+                              ฿{meat.Meat_Price}
+                            </div>
+                          </div>
+                        ))}
+                      </CheckboxGroup>
                     </div>
                   </div>
-                </RadioGroup>
-              </div>
-            </div>
-          </section>
+                </div>
+              </section>
 
-          <section>
-            <div className="mx-8 mt-8">
-              <div className="font-DB_Med text-xl">
-                เลือกเนื้อสัตว์ ({selectedMeat.length}/3)
-              </div>
-              <div className="pt-2">
-                <div className="mb-4">
+              <section>
+                <div className="mx-8 mt-8">
+                  <div className="font-DB_Med text-xl">เพิ่มเติม</div>
                   <CheckboxGroup
-                    value={selectedMeat.map((meat) => meat.toString())}
-                    onValueChange={handleMeatChange}
+                    value={selectedOptions.map((opt) => opt.toString())}
+                    onValueChange={(e) =>
+                      setSelectedOptions(e.map((opt) => parseInt(opt)))
+                    }
                     color="success"
                   >
-                    {meats.map((meat) => (
+                    {options.map((option) => (
                       <div
-                        key={meat.Meat_ID}
+                        key={option.Option_ID}
                         className="flex items-center justify-between pt-2"
                       >
                         <Checkbox
-                          value={`${meat.Meat_ID}`}
+                          value={`${option.Option_ID}`}
                           className="flex-grow font-DB_v4"
-                          disabled={meat.Meat_Name === 'รวมมิตร' ? specialMeatSelected : isSpecialMeatIncluded}
                         >
-                          {meat.Meat_Name}
+                          {option.Option_Name}
                         </Checkbox>
                         <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl ml-4">
-                          ฿{meat.Meat_Price}
+                          ฿{option.Option_Price}
                         </div>
                       </div>
                     ))}
                   </CheckboxGroup>
                 </div>
-              </div>
+              </section>
             </div>
-          </section>
+          )}
 
-          <section>
-            <div className="mx-8 mt-8">
-              <div className="font-DB_Med text-xl">เพิ่มเติม</div>
-              <CheckboxGroup
-                value={selectedOptions.map((opt) => opt.toString())}
-                onValueChange={(e) =>
-                  setSelectedOptions(e.map((opt) => parseInt(opt)))
-                }
-                color="success"
-              >
-                {options.map((option) => (
-                  <div
-                    key={option.Option_ID}
-                    className="flex items-center justify-between pt-2"
-                  >
-                    <Checkbox
-                      value={`${option.Option_ID}`}
-                      className="flex-grow font-DB_v4"
+          {typeName == "ก๋วยเตี๋ยว" && (
+            <div>
+              <section>
+                <div className="mx-8 mt-8">
+                  <div className="font-DB_Med text-xl">ขนาด</div>
+                  <div className="pt-3">
+                    <RadioGroup
+                      value={selectedSize.toString()}
+                      onValueChange={(e) => setSelectedSize(parseInt(e))}
+                      color="success"
                     >
-                      {option.Option_Name}
-                    </Checkbox>
-                    <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl ml-4">
-                      ฿{option.Option_Price}
+                      <div className="pt-2">
+                        <div className="flex items-center justify-between">
+                          <Radio value="0" className="font-DB_v4">
+                            ธรรมดา
+                          </Radio>
+                          <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
+                            ฿0
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between pt-3">
+                          <Radio value="10" className="font-DB_v4">
+                            พิเศษ
+                          </Radio>
+                          <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
+                            ฿10
+                          </div>
+                        </div>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <div className="mx-8 mt-8">
+                  <div className="font-DB_Med text-xl">
+                    เลือกเส้น ({selectedNoodles.length}/2)
+                  </div>
+                  <div className="pt-2">
+                    <div className="mb-4">
+                      <CheckboxGroup
+                        value={selectedNoodles.map((noodle) =>
+                          noodle.toString()
+                        )}
+                        onValueChange={handleNoodleChange}
+                        color="success"
+                      >
+                        {noodlesType.map((noodle) => (
+                          <div
+                            key={noodle.Noodles_ID}
+                            className="flex items-center justify-between pt-2"
+                          >
+                            <Checkbox
+                              value={`${noodle.Noodles_ID}`}
+                              className="flex-grow font-DB_v4"
+                            >
+                              {noodle.Noodles_Name}
+                            </Checkbox>
+                            <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl ml-4">
+                              ฿{noodle.Noodles_Price}
+                            </div>
+                          </div>
+                        ))}
+                      </CheckboxGroup>
                     </div>
                   </div>
-                ))}
-              </CheckboxGroup>
+                </div>
+              </section>
+
+              <section>
+                <div className="mx-8 mt-8">
+                  <div className="font-DB_Med text-xl">
+                    เลือกเนื้อสัตว์ ({selectedMeat.length}/3)
+                  </div>
+                  <div className="pt-2">
+                    <div className="mb-4">
+                      <CheckboxGroup
+                        value={selectedMeat.map((meat) => meat.toString())}
+                        onValueChange={handleMeatChange}
+                        color="success"
+                      >
+                        {meats.map((meat) => (
+                          <div
+                            key={meat.Meat_ID}
+                            className="flex items-center justify-between pt-2"
+                          >
+                            <Checkbox
+                              value={`${meat.Meat_ID}`}
+                              className="flex-grow font-DB_v4"
+                              disabled={
+                                meat.Meat_Name === "รวมมิตร"
+                                  ? specialMeatSelected
+                                  : isSpecialMeatIncluded
+                              }
+                            >
+                              {meat.Meat_Name}
+                            </Checkbox>
+                            <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl ml-4">
+                              ฿{meat.Meat_Price}
+                            </div>
+                          </div>
+                        ))}
+                      </CheckboxGroup>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <div className="mx-8 mt-8">
+                  <div className="font-DB_Med text-xl">เพิ่มเติม</div>
+                  <CheckboxGroup
+                    value={selectedOptions.map((opt) => opt.toString())}
+                    onValueChange={(e) =>
+                      setSelectedOptions(e.map((opt) => parseInt(opt)))
+                    }
+                    color="success"
+                  >
+                    {options.map((option) => (
+                      <div
+                        key={option.Option_ID}
+                        className="flex items-center justify-between pt-2"
+                      >
+                        <Checkbox
+                          value={`${option.Option_ID}`}
+                          className="flex-grow font-DB_v4"
+                        >
+                          {option.Option_Name}
+                        </Checkbox>
+                        <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl ml-4">
+                          ฿{option.Option_Price}
+                        </div>
+                      </div>
+                    ))}
+                  </CheckboxGroup>
+                </div>
+              </section>
             </div>
-          </section>
+          )}
+
+          {typeName == "เครื่องดื่ม" && (
+            <div>
+              <section>
+                <div className="mx-8 mt-8">
+                  <div className="font-DB_Med text-xl">ขนาด</div>
+                  <div className="pt-3">
+                    <RadioGroup
+                      value={selectedSize.toString()}
+                      onValueChange={(e) => setSelectedSize(parseInt(e))}
+                      color="success"
+                    >
+                      <div className="pt-2">
+                        <div className="flex items-center justify-between">
+                          <Radio value="0" className="font-DB_v4">
+                            แก้วเล็ก
+                          </Radio>
+                          <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
+                            ฿0
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between pt-3">
+                          <Radio value="10" className="font-DB_v4">
+                            แก้วใหญ่
+                          </Radio>
+                          <div className="text-right text-sm font-DB_Med text-white bg-green-600 py-1 px-3 rounded-2xl">
+                            ฿10
+                          </div>
+                        </div>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
 
           <section className="mt-7 pb-12">
             <div className="max-w-sm mx-8">

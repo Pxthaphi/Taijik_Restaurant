@@ -21,10 +21,12 @@ interface OrderProduct {
   Product_Size: string;
   Product_Meat: number;
   Product_Option: number;
+  Product_Noodles: number;
   Product_Detail: string;
   Total_Price: number;
   Meat_Name?: string;
   Option_Name?: string;
+  Noodles_Name?: string;
 }
 
 export default function Order_Status({ params }: PageProps) {
@@ -91,10 +93,15 @@ export default function Order_Status({ params }: PageProps) {
       }
 
       const productIds = orderProductsData.map((product) => product.Product_ID);
-      const meatIds = orderProductsData.map((product) => product.Product_Meat);
+      const meatIds = orderProductsData.flatMap(
+        (product) => product.Product_Meat || []
+      );
       const optionIds = orderProductsData.flatMap(
-        (product) => product.Product_Option
+        (product) => product.Product_Option || []
       ); // flatten option IDs array
+      const noodleIDs = orderProductsData.flatMap(
+        (product) => product.Product_Noodles || []
+      );
 
       // Fetch product names
       const { data: productsData, error: productsError } = await supabase
@@ -132,6 +139,18 @@ export default function Order_Status({ params }: PageProps) {
         return;
       }
 
+      // Fetch option names
+      const { data: noodlesData, error: noodlesError } = await supabase
+        .from("noodles_type")
+        .select("*")
+        .in("Noodles_ID", noodleIDs);
+
+      if (noodlesError) {
+        console.error(noodlesError);
+        setLoading(false);
+        return;
+      }
+
       // Map product names and details to order products
       const enhancedOrderProducts = orderProductsData.map((product) => {
         const productInfo = productsData.find(
@@ -149,6 +168,11 @@ export default function Order_Status({ params }: PageProps) {
           return option ? option.Option_Name : "Unknown Option";
         });
 
+        const noodles = product.Product_Noodles.map((noodlesId: number) => {
+          const noodle = noodlesData.find((n) => n.Noodles_ID === noodlesId);
+          return noodle ? noodle.Noodles_Name : "Unknown Option";
+        });
+
         return {
           ...product,
           Product_Name: productInfo
@@ -156,6 +180,7 @@ export default function Order_Status({ params }: PageProps) {
             : "Unknown Product",
           Meat_Name: meats.join(", "), // รวมชื่อเนื้อที่พบเป็น comma-separated string
           Option_Name: options.join(", "), // รวมตัวเลือกที่พบเป็น comma-separated string
+          Noodles_Name: noodles.join(", "), // รวมตัวเลือกที่พบเป็น comma-separated string
         };
       });
 
@@ -328,20 +353,25 @@ export default function Order_Status({ params }: PageProps) {
           <section key={product.OrderP_ID} className="mx-6 mt-6 my-3">
             <div className="flex justify-between item-center my-4">
               <div className="flex justify-center">
-                <div className="bg-gray-200 rounded-lg px-5 py-2 flex items-center me-4">
+                <div className="bg-gray-200 rounded-xl px-5 py-2 flex items-center me-4">
                   <p className="text-lg text-gray-700 font-DB_v4">
                     {product.Product_Qty}
                   </p>
                 </div>
                 <div className="-my-0.5">
-                  <h3 className="text-lg font-DB_v4 text-gray-700">
-                    {product.Product_Name}{" "}
-                    <span className="text-base">({product.Meat_Name})</span>{" "}
-                    {product.Product_Size}
+                  <h3 className="flex flex-row text-lg font-DB_v4 text-gray-700 space-x-1">
+                    <span>{product.Product_Name}</span>
+                    {product.Noodles_Name && <p>{product.Noodles_Name}</p>}
+                    {product.Meat_Name && <p>({product.Meat_Name})</p>}
+                    {product.Product_Size && <p>{product.Product_Size}</p>}
                   </h3>
-                  <p className="text-base font-DB_v4 text-gray-500">
-                    เพิ่มเติม : {product.Option_Name}
-                  </p>
+
+                  {product.Option_Name && (
+                    <p className="text-base font-DB_v4 text-gray-500">
+                      เพิ่มเติม : {product.Option_Name}
+                    </p>
+                  )}
+
                   {product.Product_Detail != "" && (
                     <p className="text-base font-DB_v4 text-gray-500">
                       เพิ่มเติม : {product.Product_Detail}

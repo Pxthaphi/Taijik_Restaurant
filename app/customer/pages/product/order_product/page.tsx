@@ -5,12 +5,14 @@ import Link from "next/link";
 import { Dayjs } from "dayjs";
 import PickerWithButtonField from "./components/timepicker";
 import { supabase } from "@/lib/supabase";
+import { PostgrestError } from "@supabase/supabase-js";
 import { getUserID } from "@/app/auth/getUserID";
 import Swal from "sweetalert2";
 
 interface Product {
   Product_ID: string;
   Product_Name: string;
+  Product_Size: string;
   Product_Detail: string;
   Product_Price: number;
   Product_Image: string;
@@ -23,6 +25,7 @@ interface CartItem {
   Product_Size: string;
   Product_Meat: string[];
   Product_Option: string[];
+  Product_Noodles: string[];
   Product_Detail: string;
   Total_Price: number;
 }
@@ -37,11 +40,18 @@ interface FoodOption {
   Option_Name: string;
 }
 
+interface ProductType {
+  Type_ID: number;
+  Type_Name: string;
+  Type_Icon: string;
+}
+
 interface MergedProduct extends CartItem {
   Product_Name: string;
   Product_Image: string;
   Meat_Name: string[];
   Option_Names: string[];
+  Noodles_Name: string[];
 }
 
 export default function Order_Product() {
@@ -54,6 +64,7 @@ export default function Order_Product() {
   const [optionOrder, setOptionOrder] = useState<string>("");
   const [orderDetail, setOrderDetail] = useState<string>("");
   const [products, setProducts] = useState<MergedProduct[]>([]);
+  const [producttype, setProductType] = useState<ProductType[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [orderIDCounter, setOrderIDCounter] = useState<number>(1); // State for Order_ID counter
   const promotionID = 1; // replace with actual logic to get
@@ -67,9 +78,7 @@ export default function Order_Product() {
           .order("Order_ID", { ascending: false })
           .limit(1);
 
-        if (error) {
-          throw error;
-        }
+        if (error) throw error;
 
         if (lastOrder && lastOrder.length > 0) {
           const lastOrderID = parseInt(
@@ -79,6 +88,11 @@ export default function Order_Product() {
         }
       } catch (error) {
         console.error("Error fetching last Order_ID: ", error);
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "Error fetching last Order_ID",
+        });
       }
     };
 
@@ -88,13 +102,31 @@ export default function Order_Product() {
   // Generate Order_ID with leading zeros
   const Order_ID = `TK-${orderIDCounter.toString().padStart(8, "0")}`;
 
+  async function fetchType() {
+    try {
+      const { data, error } = await supabase.from("product_type").select("*");
+
+      if (error) throw error;
+
+      setProductType(data as ProductType[]);
+      console.table(data);
+    } catch (error) {
+      setError((error as PostgrestError).message);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: (error as PostgrestError).message,
+      });
+    }
+  }
+
   useEffect(() => {
     const fetchProductsFromCart = async () => {
       try {
         const { data: cartData, error: cartError } = await supabase
           .from("cart")
           .select(
-            "User_ID, Product_ID, Product_Qty, Product_Size, Product_Meat, Product_Option, Product_Detail, Total_Price"
+            "User_ID, Product_ID, Product_Qty, Product_Size, Product_Meat, Product_Option, Product_Detail, Total_Price, Product_Noodles"
           )
           .eq("User_ID", getUserID());
 
@@ -112,8 +144,11 @@ export default function Order_Product() {
         setQuantityMap(initialQuantityMap);
 
         const productIDs = cartData.map((item) => item.Product_ID);
-        const meatIDs = cartData.map((item) => item.Product_Meat);
-        const optionIDs = cartData.flatMap((item) => item.Product_Option);
+        const meatIDs = cartData.flatMap((item) => item.Product_Meat || []);
+        const optionIDs = cartData.flatMap((item) => item.Product_Option || []);
+        const noodleIDs = cartData.flatMap(
+          (item) => item.Product_Noodles || []
+        );
 
         const { data: productsData, error: productsError } = await supabase
           .from("products")
@@ -138,25 +173,43 @@ export default function Order_Product() {
 
         if (optionsError) throw optionsError;
 
+        const { data: noodlesData, error: noodlesError } = await supabase
+          .from("noodles_type")
+          .select("*")
+          .in("Noodles_ID", noodleIDs)
+          .order("Noodles_ID");
+
+        if (noodlesError) throw noodlesError;
+
         const mergedProducts = cartData.map((cartItem) => {
           const productData = productsData.find(
             (product) => product.Product_ID === cartItem.Product_ID
           );
 
-          // Explicitly type the parameter 'meat' in the map function
-          const meatData = cartItem.Product_Meat.map((meatId: string) => {
-            const meat = meatsData.find((meat) => meat.Meat_ID === meatId);
-            return meat?.Meat_Name || "";
-          }).join(", ");
+          const meatData = (cartItem.Product_Meat || [])
+            .map((meatId: string) => {
+              const meat = meatsData.find((meat) => meat.Meat_ID === meatId);
+              return meat?.Meat_Name || "";
+            })
+            .join(", ");
 
-          const optionNames = cartItem.Product_Option.map(
-            (optionId: string) => {
+          const optionNames = (cartItem.Product_Option || [])
+            .map((optionId: string) => {
               const option = optionsData.find(
                 (option) => option.Option_ID === optionId
               );
               return option?.Option_Name || "";
-            }
-          ).join(", ");
+            })
+            .join(", ");
+
+          const noodleName = (cartItem.Product_Noodles || [])
+            .map((noodlesId: string) => {
+              const noodles = noodlesData.find(
+                (noodles) => noodles.Noodles_ID === noodlesId
+              );
+              return noodles?.Noodles_Name || "";
+            })
+            .join(", ");
 
           return {
             ...cartItem,
@@ -164,29 +217,23 @@ export default function Order_Product() {
             Product_Image: productData?.Product_Image || "",
             Meat_Name: meatData,
             Option_Names: optionNames,
+            Noodles_Name: noodleName,
           };
         });
 
         setProducts(mergedProducts as MergedProduct[]);
-
-        console.log("Cart Data:");
-        console.table(cartData);
-
-        console.log("Products Data:");
-        console.table(productsData);
-
-        console.log("Meats Data:");
-        console.table(meatsData);
-
-        console.log("Options Data:");
-        console.table(optionsData);
       } catch (error) {
         setError((error as Error).message);
-        console.error("Error fetching products: ", error);
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: (error as Error).message,
+        });
       }
     };
 
     fetchProductsFromCart();
+    fetchType();
 
     const channel = supabase
       .channel("realtime-cart")
@@ -194,7 +241,6 @@ export default function Order_Product() {
         "postgres_changes",
         { event: "*", schema: "public", table: "cart" },
         (payload) => {
-          console.log("Change received!", payload);
           fetchProductsFromCart();
         }
       )
@@ -326,11 +372,13 @@ export default function Order_Product() {
         Product_ID: product.Product_ID,
         Product_Qty: quantityMap[product.Product_ID] || 0,
         Product_Size: product.Product_Size || "",
-        Product_Meat: product.Product_Meat || "",
-        Product_Option: product.Product_Option,
+        Product_Meat: product.Product_Meat?.length ? product.Product_Meat : '{}',  // Handle array properly
+        Product_Option: product.Product_Option?.length ? product.Product_Option : '{}',
+        Product_Noodles: product.Product_Noodles?.length ? product.Product_Noodles : '{}',
         Product_Detail: product.Product_Detail || "",
         Total_Price: product.Total_Price || 0,
       }));
+     
 
       // Insert into order_products table
       const { data: orderProductsInsertData, error: orderProductsInsertError } =
@@ -680,11 +728,11 @@ export default function Order_Product() {
 
         <section className="flex justify-center items-center pt-2 mt-5">
           <div className="flex">
-            <div className="flex bg-gray-100 hover:bg-gray-200 rounded-lg transition p-1">
+            <div className="flex bg-gray-100 hover:bg-gray-200 rounded-full transition p-1">
               <nav className="flex space-x-1" aria-label="Tabs" role="tablist">
                 <button
                   type="button"
-                  className={`hs-tab-active:bg-white hs-tab-active:text-gray-700 py-3 px-4 inline-flex items-center gap-x-2 bg-transparent text-sm font-medium rounded-lg hover:text-gray-700 hover:hover:text-blue-600 disabled:opacity-50 disabled:pointer-events-none ${
+                  className={`hs-tab-active:bg-white hs-tab-active:text-gray-700 py-3 px-4 inline-flex items-center gap-x-2 bg-transparent text-sm font-medium rounded-full hover:text-gray-700 hover:hover:text-blue-600 disabled:opacity-50 disabled:pointer-events-none ${
                     selectedOption === "options1" ? "active" : ""
                   }`}
                   id="segment-item-1"
@@ -700,7 +748,7 @@ export default function Order_Product() {
                 </button>
                 <button
                   type="button"
-                  className={`hs-tab-active:bg-white hs-tab-active:text-gray-700 py-3 px-4 inline-flex items-center gap-x-2 bg-transparent text-sm font-medium rounded-lg hover:text-gray-700 hover:hover:text-blue-600 disabled:opacity-50 disabled:pointer-events-none ${
+                  className={`hs-tab-active:bg-white hs-tab-active:text-gray-700 py-3 px-4 inline-flex items-center gap-x-2 bg-transparent text-sm font-medium rounded-full hover:text-gray-700 hover:hover:text-blue-600 disabled:opacity-50 disabled:pointer-events-none ${
                     selectedOption === "options2" ? "active" : ""
                   }`}
                   id="segment-item-2"
@@ -725,23 +773,29 @@ export default function Order_Product() {
               <div className="rounded-2xl flex items-center">
                 <div className="w-1/3 ms-2">
                   <img
-                    className="w-18 h-18 object-cover rounded-xl"
+                    className="w-[9rem] h-[7rem] object-cover rounded-xl shadow-lg"
                     src={`${product.Product_Image}?t=${new Date().getTime()}`}
                     alt="Product Image"
                   />
                 </div>
                 <div className="w-1/2 ms-6 pt-1">
-                  <h3 className="text-lg font-DB_Med text-gray-700">
-                    {product.Product_Name} <span className="text-sm">({product.Meat_Name})</span>
+                  <h3 className="text-lg font-DB_Med text-gray-700 flex flex-wrap">
+                    {product.Product_Name}
                   </h3>
+                  <span className="text-sm font-DB_Med flex flex-wrap items-center mt-1 space-x-2">
+                    {product.Noodles_Name && <p>{product.Noodles_Name}</p>}
+                    {product.Meat_Name && <p>({product.Meat_Name})</p>}
+                    {product.Product_Size && <p>{product.Product_Size}</p>}
+                  </span>
+
                   {product.Option_Names && (
-                    <p className="text-sm text-gray-500 font-DB_v4">
-                      ตัวเลือกเพิ่มเติม : {product.Option_Names}
+                    <p className="text-sm text-gray-500 font-DB_v4 mt-2">
+                      ตัวเลือกเพิ่มเติม: {product.Option_Names}
                     </p>
                   )}
-                  {product.Product_Detail != "" && (
+                  {product.Product_Detail && (
                     <p className="text-sm text-gray-500 font-DB_v4">
-                      รายละเอียดเพิ่มเติม : {product.Product_Detail}
+                      รายละเอียดเพิ่มเติม: {product.Product_Detail}
                     </p>
                   )}
                   <div className="flex justify-between mt-4 gap-x-6">
@@ -758,7 +812,6 @@ export default function Order_Product() {
                               decrementQuantity(product.Product_ID)
                             }
                             className="size-6 inline-flex justify-center items-center gap-x-2 text-sm font-medium rounded-md border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none"
-                            data-hs-input-number-decrement=""
                           >
                             <svg
                               className="flex-shrink-0 size-3.5"
@@ -780,7 +833,6 @@ export default function Order_Product() {
                             type="text"
                             value={quantityMap[product.Product_ID] || 0}
                             readOnly
-                            data-hs-input-number-input=""
                           />
                           <button
                             type="button"
@@ -789,7 +841,6 @@ export default function Order_Product() {
                             }
                             disabled={quantityMap[product.Product_ID] >= 99}
                             className="size-6 inline-flex justify-center items-center gap-x-2 text-sm font-medium rounded-md border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none"
-                            data-hs-input-number-increment=""
                           >
                             <svg
                               className="flex-shrink-0 size-3.5"
@@ -865,9 +916,12 @@ export default function Order_Product() {
           {products.map((product) => (
             <div key={product.Product_ID} className="flex justify-between mt-3">
               <div className="text-base text-gray-800 font-DB_Med">
-                {product.Product_Name} <span className="text-sm">({product.Meat_Name})</span>{" "}
+                {product.Product_Name}{" "}
+                <span className="text-sm">({product.Meat_Name})</span>{" "}
                 {product.Option_Names && (
-                  <span className="text-sm">(เพิ่ม {product.Option_Names})</span>
+                  <span className="text-sm">
+                    (เพิ่ม {product.Option_Names})
+                  </span>
                 )}{" "}
                 x {quantityMap[product.Product_ID]}
               </div>

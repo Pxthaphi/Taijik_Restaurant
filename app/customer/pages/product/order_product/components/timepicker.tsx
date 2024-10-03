@@ -75,7 +75,7 @@ export default function PickerWithButtonField(props: PickerWithButtonFieldProps)
   const [currentTime, setCurrentTime] = React.useState<Dayjs>(dayjs()); // State to hold the current time
 
   const MinTime = currentTime.startOf("minute"); // Minimum selectable time is now
-  const MaxTime = dayjs().set("hour", 20).startOf("hour"); // Maximum selectable time
+  const MaxTime = dayjs().set("hour", 21).startOf("hour"); // Maximum selectable time
 
   React.useEffect(() => {
     const updateTime = () => setCurrentTime(dayjs()); // Update current time every minute

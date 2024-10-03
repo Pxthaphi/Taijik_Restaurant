@@ -12,23 +12,29 @@ interface Product {
   Product_Price: number;
   Product_Image: string; // Added Product_Image field
   Product_Status: number;
+  Product_Type: number; // Added Type_ID for filtering
 }
 
-export default function Product() {
+interface ProductProps {
+  typeId: number;
+}
+
+export default function Product({ typeId }: ProductProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Function to fetch products from Supabase
-  async function fetchProducts() {
+   // Function to fetch products from Supabase
+   async function fetchProducts() {
     try {
-      // Fetch necessary columns including Product_Image
+      // Fetch necessary columns including Product_Image and filter by typeId
       const { data, error } = await supabase
         .from("products")
         .select(
-          "Product_ID, Product_Name, Product_Detail, Product_Price, Product_Image, Product_Status"
+          "Product_ID, Product_Name, Product_Detail, Product_Price, Product_Image, Product_Status, Product_Type"
         )
-        .neq("Product_Status", 3)
+        .eq("Product_Type", typeId) // Filter by Type_ID
+        .neq("Product_Status", 3) // Exclude products with Product_Status = 3
         .order("Product_Status", { ascending: true });
 
       if (error) {
@@ -61,7 +67,7 @@ export default function Product() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase]); // Run once on component mount
+  }, [typeId, supabase]); // Refetch products when typeId changes
 
   if (loading) {
     return (
@@ -121,6 +127,14 @@ function ProductCard({ product }: { product: Product }) {
             : ""
         }`}
       >
+        {/* แสดงข้อความ "หมด" เมื่อ Product_Status เป็น 2 */}
+        {product.Product_Status === 2 && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-5xl font-DB_Med text-red-500 opacity-100 transform -rotate-12">
+              หมด
+            </div>
+          </div>
+        )}
         <Link
           href={
             product.Product_Status === 1
@@ -130,7 +144,7 @@ function ProductCard({ product }: { product: Product }) {
         >
           {/* Star Rating */}
           <div className="absolute top-0 right-0 mt-2 mr-2">
-            <span className="inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-medium text-gray-500 bg-white rounded-md">
+            <span className="inline-flex items-center justify-center px-2 py-0.5 ms-3 text-xs font-medium text-gray-500 bg-white rounded-full">
               <svg
                 className="w-3 h-3 text-yellow-300"
                 aria-hidden="true"
