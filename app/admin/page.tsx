@@ -14,6 +14,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Badge, Button } from "@nextui-org/react";
+import DialogDemo from "./pages/components/modal-dialog";
+import { Tektur } from "next/font/google";
 
 interface Profile {
   pictureUrl?: string;
@@ -24,6 +26,7 @@ interface Profile {
 export default function Customer() {
   const [profile, setProfile] = useState<Profile>({});
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     async function checkRole() {
@@ -42,6 +45,10 @@ export default function Customer() {
 
     checkRole();
   }, []);
+
+  const openModal = () => {
+    setIsModalOpen(true);
+  };
 
   if (loading) {
     return <Loading />;
@@ -70,7 +77,12 @@ export default function Customer() {
                       </div>
                     </div>
                     <div className="ms-8">
-                      <Badge content="99+" shape="circle" color="danger" className="border text-xs mt-1 mx-0.5">
+                      <Badge
+                        content="99+"
+                        shape="circle"
+                        color="danger"
+                        className="border text-xs mt-1 mx-0.5"
+                      >
                         <Button
                           radius="full"
                           isIconOnly
@@ -156,7 +168,7 @@ export default function Customer() {
           >
             <img
               src="https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/menu.png"
-              className="w-full h-full"
+              className="w-full h-full object-cover"
               alt="เมนูอาหาร"
             />
           </Link>
@@ -166,7 +178,7 @@ export default function Customer() {
           >
             <img
               src="https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/promotion.png"
-              className="w-full h-full"
+              className="w-full h-full object-cover"
               alt="จัดการโปรโมชั่น"
             />
           </Link>
@@ -176,7 +188,7 @@ export default function Customer() {
           >
             <img
               src="https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/listorder.png"
-              className="w-full h-full"
+              className="w-full h-full object-cover"
               alt="รายการคำสั่งซื้อ"
             />
           </Link>
@@ -186,7 +198,7 @@ export default function Customer() {
           >
             <img
               src="https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/historyOrder.png"
-              className="w-full h-full"
+              className="w-full h-full object-cover"
               alt="ประวัติคำสั่งซื้อ"
             />
           </Link>
@@ -196,21 +208,23 @@ export default function Customer() {
           >
             <img
               src="https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/blacklist.png"
-              className="w-full h-full"
+              className="w-full h-full object-cover"
               alt="รายชื่อ Blacklist"
             />
           </Link>
 
-          <Link
-            href="#"
-            className="flex-1 max-w-sm bg-white shadow-md rounded-3xl overflow-hidden"
+          <Button
+            onClick={() => openModal()}
+            className="flex-1 w-full h-full bg-white shadow-md rounded-3xl overflow-hidden p-0"
           >
             <img
               src="https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/option.png"
-              className="w-full h-full"
+              className="w-full h-full object-cover"
               alt="ตั้งค่า"
             />
-          </Link>
+          </Button>
+
+          {isModalOpen && <DialogDemo setIsModalOpen={setIsModalOpen} />}
 
           <Sheet>
             <SheetTrigger>Open</SheetTrigger>

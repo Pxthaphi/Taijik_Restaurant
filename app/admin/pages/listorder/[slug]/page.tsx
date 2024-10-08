@@ -342,7 +342,9 @@ export default function ListOrder_Status({ params }: PageProps) {
     const sendNotification = async () => {
       if (orderStatus && orderStatus !== lastNotifiedStatus) {
         try {
-          await sendOrderNotification();
+          if(orderStatus){
+            await sendOrderNotification();
+          }
           setLastNotifiedStatus(orderStatus); // อัปเดตสถานะที่ส่งการแจ้งเตือนล่าสุด
         } catch (error) {
           console.error("Error sending order notification:", error);

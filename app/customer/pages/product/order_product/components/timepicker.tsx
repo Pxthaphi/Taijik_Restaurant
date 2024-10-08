@@ -1,10 +1,11 @@
-import * as React from "react";
+import React, { useEffect, useState } from "react";
 import dayjs, { Dayjs } from "dayjs";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { MobileTimePicker, MobileTimePickerProps } from "@mui/x-date-pickers/MobileTimePicker";
 import { UseDateFieldProps } from "@mui/x-date-pickers/DateField";
 import { BaseSingleInputFieldProps, DateValidationError, FieldSection } from "@mui/x-date-pickers/models";
+import { supabase } from "@/lib/supabase";
 
 interface ButtonFieldProps
   extends UseDateFieldProps<Dayjs, false>,
@@ -73,9 +74,35 @@ interface PickerWithButtonFieldProps {
 export default function PickerWithButtonField(props: PickerWithButtonFieldProps) {
   const [value, setValue] = React.useState<Dayjs | null>(dayjs()); // Initialize with current time
   const [currentTime, setCurrentTime] = React.useState<Dayjs>(dayjs()); // State to hold the current time
+  const [openTime, setOpenTime] = useState<Dayjs | null>(null);
+  const [closeTime, setCloseTime] = useState<Dayjs | null>(null);
+  const [timeID, setTimeID] = useState<number | undefined>();
 
-  const MinTime = currentTime.startOf("minute"); // Minimum selectable time is now
-  const MaxTime = dayjs().set("hour", 21).startOf("hour"); // Maximum selectable time
+  // Fetch existing times when the modal is opened
+  const fetchTimes = async () => {
+    const { data, error } = await supabase.from("time").select("*").single(); // Fetch a single row
+
+    if (error) {
+      console.error("Error fetching times:", error);
+      return;
+    }
+
+    if (data) {
+      setTimeID(data.ResTime_ID);
+      setOpenTime(dayjs(data.ResTime_On)); // Convert to Dayjs
+      setCloseTime(dayjs(data.ResTime_Off)); // Convert to Dayjs
+    }
+  };
+
+  useEffect(() => {
+    fetchTimes(); // Fetch times when the modal is opened
+  }, []);
+
+  // Minimum selectable time logic
+  const MinTime = openTime && currentTime.isBefore(openTime) ? openTime : currentTime.startOf("minute");
+
+  // Maximum selectable time should be the closing time fetched from the database
+  const MaxTime = closeTime ?? undefined; // Ensure it's either Dayjs or undefined
 
   React.useEffect(() => {
     const updateTime = () => setCurrentTime(dayjs()); // Update current time every minute

@@ -18,6 +18,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Divider } from "@nextui-org/react";
+import FireAnimation from "../../components/assets/fire";
 
 interface Product {
   User_ID: string;
@@ -309,7 +310,12 @@ export default function Show_Product() {
       {/* รายการอาหารขายดี */}
       <section className="animate-fade-up animate-duration-[1000ms]">
         <div className="flex items-center justify-between mx-6 mt-7">
-          <div className="font-DB_Med text-xl">เมนูอาหาร ขายดี</div>
+          <div className="flex justify-center font-DB_Med text-xl">
+            <div className="mr-1">เมนูอาหาร ขายดี</div>
+            <div className="-mt-1">
+              <FireAnimation size={30} />
+            </div>
+          </div>
         </div>
 
         <div className="mx-6 mt-6 my-9">

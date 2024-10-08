@@ -8,6 +8,7 @@ import Loading from "../components/loading";
 import Navigator from "./components/footer";
 import ModalTelphone from "./components/modal-telephone";
 import { getUserID } from "@/app/auth/getUserID";
+import { getUserType } from "@/app/auth/GetType";
 import { supabase } from "@/lib/supabase";
 import Swal from 'sweetalert2';
 import liff from "@line/liff";
@@ -100,6 +101,8 @@ export default function Customer() {
         console.error("An error occurred fetching the blacklist:", error);
       }
     }
+
+    console.log("type user : ",getUserType());
   
     checkUser();
     checkTelephone();

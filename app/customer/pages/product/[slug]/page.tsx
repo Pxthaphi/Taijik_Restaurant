@@ -7,6 +7,8 @@ import Link from "next/link";
 import { getUserID } from "@/app/auth/getUserID";
 import { CheckboxGroup, Checkbox, RadioGroup, Radio } from "@nextui-org/react";
 import Swal from "sweetalert2";
+import { toast } from "sonner"; // Import toast
+import { Toaster } from "@/components/ui/sonner"; // Import Toaster
 
 interface PageProps {
   params: {
@@ -432,7 +434,12 @@ export default function Product_Detail({ params }: PageProps) {
           console.error("Error adding product to cart:", error.message);
         } else {
           console.log("Product added to cart successfully:", data);
-          window.location.href = "../product";
+          // Show toast notification
+          toast.success("เพิ่มเมนูอาหารแล้ว เลือกต่อเลย!!");
+          // Delay navigation to the order product page
+          setTimeout(() => {
+            router.push(`../product`);
+          }, 2000); // Navigate after 2 seconds
         }
       } catch (err) {
         console.error("Unexpected error:", err);
@@ -485,7 +492,12 @@ export default function Product_Detail({ params }: PageProps) {
           console.error("Error adding product to cart:", error.message);
         } else {
           console.log("Product added to cart successfully:", data);
-          window.location.href = "../product";
+          // Show toast notification
+          toast.success("เพิ่มเมนูอาหารแล้ว เลือกต่อเลย!!");
+          // Delay navigation to the order product page
+          setTimeout(() => {
+            router.push(`../product`);
+          }, 2000); // Navigate after 2 seconds
         }
       } catch (err) {
         console.error("Unexpected error:", err);
@@ -519,7 +531,12 @@ export default function Product_Detail({ params }: PageProps) {
           console.error("Error adding product to cart:", error.message);
         } else {
           console.log("Product added to cart successfully:", data);
-          window.location.href = "../product";
+          // Show toast notification
+          toast.success("เพิ่มเมนูอาหารแล้ว เลือกต่อเลย!!");
+          // Delay navigation to the order product page
+          setTimeout(() => {
+            router.push(`../product`);
+          }, 2000); // Navigate after 2 seconds
         }
       } catch (err) {
         console.error("Unexpected error:", err);
@@ -543,7 +560,12 @@ export default function Product_Detail({ params }: PageProps) {
           console.error("Error adding product to cart:", error.message);
         } else {
           console.log("Product added to cart successfully:", data);
-          window.location.href = "../product";
+          // Show toast notification
+          toast.success("เพิ่มเมนูอาหารแล้ว เลือกต่อเลย!!");
+          // Delay navigation to the order product page
+          setTimeout(() => {
+            router.push(`../product`);
+          }, 2000); // Navigate after 2 seconds
         }
       } catch (err) {
         console.error("Unexpected error:", err);
@@ -1130,6 +1152,7 @@ export default function Product_Detail({ params }: PageProps) {
           </footer>
         </Fragment>
       ))}
+      <Toaster richColors /> {/* Add Toaster here */}
     </>
   );
 }

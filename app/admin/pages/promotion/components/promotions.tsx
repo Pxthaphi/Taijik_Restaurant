@@ -2,37 +2,39 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { PostgrestError } from "@supabase/supabase-js";
-import Option_Food from "./opiton";
+import Option_Promotion from "./opiton";
 
-// Define the Product interface
-interface Product {
-  Product_ID: number;
-  Product_Name: string;
-  Product_Detail: string;
-  Product_Price: number;
-  Product_Image: string;
-  Product_Status: number;
-  Product_Update: string;
+// Define the PromotionDetail interface based on the 'promotions' table structure
+interface PromotionDetail {
+  Promotion_ID: number;
+  Promotion_Name: string;
+  Promotion_Detail: string;
+  Promotion_Discount: number;
+  Promotion_Timestart: string;
+  Promotion_Timestop: string;
+  Promotion_Status: number;
+  Promotion_Images: string;
+  Promotion_Update: string;
 }
-  
-export default function Food() {
-  const [products, setProducts] = useState<Product[]>([]);
+
+export default function Promotion() {
+  const [promotions, setPromotions] = useState<PromotionDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Function to fetch products from Supabase
-  async function fetchProducts() {
+  // Function to fetch promotions from Supabase
+  async function fetchPromotions() {
     try {
-      // Fetch necessary columns including Product_Image
+      // Fetch necessary columns including Promotion_Images
       const { data, error } = await supabase
-        .from("products")
+        .from("promotions")
         .select("*")
-        .order("Product_ID");
+        .order("Promotion_ID");
 
       if (error) {
         throw error;
       } else {
-        setProducts(data as Product[]);
+        setPromotions(data as PromotionDetail[]);
         console.table(data);
       }
     } catch (error) {
@@ -43,16 +45,16 @@ export default function Food() {
   }
 
   useEffect(() => {
-    fetchProducts();
+    fetchPromotions();
 
     const channel = supabase
-      .channel("realtime-products")
+      .channel("realtime-promotions")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "products" },
+        { event: "*", schema: "public", table: "promotions" },
         (payload) => {
           console.log("Change received!", payload);
-          fetchProducts();
+          fetchPromotions();
         }
       )
       .subscribe();
@@ -92,81 +94,79 @@ export default function Food() {
     return <p>Error: {error}</p>;
   }
 
-  if (products.length === 0) {
-    return <p>ไม่พบเมนูอาหาร กรุณาเพิ่มเมนูอาหาร</p>;
+  if (promotions.length === 0) {
+    return <p>ไม่พบโปรโมชั่น กรุณาเพิ่มโปรโมชั่น</p>;
   }
 
   return (
     <div className="grid justify-center grid-cols-2 gap-4">
-      {products.map((product) => (
-        <ProductCard key={product.Product_ID} product={product} />
+      {promotions.map((promotion) => (
+        <PromotionCard key={promotion.Promotion_ID} promotion={promotion} />
       ))}
     </div>
   );
-}
-function ProductCard({ product }: { product: Product }) {
-
-  return (
-    <div>
+  
+  function PromotionCard({ promotion }: { promotion: PromotionDetail }) {
+    const formatDate = (dateString: string) => {
+      const date = new Date(dateString);
+      return new Intl.DateTimeFormat("th-TH", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Asia/Bangkok",
+      }).format(date);
+    };
+  
+    return (
       <div className="bg-white border rounded-xl shadow-sm sm:flex">
-        <div className="flex-shrink-0 relative w-full rounded-t-xl overflow-hidden pt-[40%] sm:rounded-s-xl sm:max-w-60 md:rounded-se-none md:max-w-xs">
-          <img
-            className="absolute top-0 start-0 w-full h-full object-cover"
-            src={`${product.Product_Image}?t=${new Date().getTime()}`}
-            alt={product.Product_Name}
-          />
-        </div>
-        <div className="flex flex-wrap w-full">
-          <div className="p-4 flex flex-col h-full w-full sm:p-7">
+        <div className="w-full h-full bg-white border rounded-xl shadow-sm flex flex-col">
+          <div className="relative w-full h-0 pb-[40%] overflow-hidden rounded-t-xl">
+            <img
+              className="absolute top-0 left-0 w-full h-full object-cover"
+              src={`${promotion.Promotion_Images}?t=${new Date().getTime()}`}
+              alt={promotion.Promotion_Name}
+            />
+          </div>
+          <div className="flex flex-col flex-grow p-4 sm:p-7">
             <h3 className="text-xl font-DB_Med text-gray-800">
-              {product.Product_Name}
+              {promotion.Promotion_Name}
             </h3>
             <div className="flex justify-between items-center mt-2">
-              <p className="text-base font-DB_v4">รหัสเมนูอาหาร</p>
-              <p className="text-base font-DB_v4">{product.Product_ID}</p>
+              <p className="text-base font-DB_v4">รหัสโปรโมชั่น</p>
+              <p className="text-base font-DB_v4">{promotion.Promotion_ID}</p>
             </div>
             <div className="flex justify-between items-center mt-2">
-              <p className="text-base font-DB_v4">ราคา</p>
-              <p className="text-base font-DB_v4">฿{product.Product_Price}</p>
+              <p className="text-base font-DB_v4">ส่วนลด</p>
+              <p className="text-base font-DB_v4">{promotion.Promotion_Discount}%</p>
             </div>
             <div className="flex justify-between items-center mt-2">
               <p className="text-base font-DB_v4">สถานะ</p>
               <p className="text-base font-DB_v4">
-                {product.Product_Status == 1 && (
+                {promotion.Promotion_Status === 1 && (
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                    ยังมีอยู่
+                    ใช้งานอยู่
                   </span>
                 )}
-                {product.Product_Status == 2 && (
+                {promotion.Promotion_Status === 2 && (
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-red-100 text-red-800">
-                    หมด
-                  </span>
-                )}
-                {product.Product_Status == 3 && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-gray-800 text-white">
                     ปิดใช้งาน
                   </span>
                 )}
-                {product.Product_Status != 1 &&
-                  product.Product_Status != 2 &&
-                  product.Product_Status != 3 && (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs bg-orange-100 text-orange-800">
-                      เกิดข้อผิดพลาด!!
-                    </span>
-                  )}
               </p>
             </div>
             <div className="mt-5 flex justify-end space-x-4">
-              <Option_Food productId={product.Product_ID} />
+              <Option_Promotion promotionId={promotion.Promotion_ID} />
             </div>
             <div className="mt-5 sm:mt-auto">
               <p className="text-xs text-gray-500">
-                แก้ไขล่าสุดเมื่อ {product.Product_Update}
+                แก้ไขล่าสุดเมื่อ {formatDate(promotion.Promotion_Update)}
               </p>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+}  

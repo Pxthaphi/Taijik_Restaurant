@@ -7,6 +7,7 @@ import { login } from "./auth/login";
 import { supabase } from "@/lib/supabase";
 import Swal from "sweetalert2";
 import liff from "@line/liff";
+import Cookies from "js-cookie";
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -29,8 +30,10 @@ export default function Home() {
         // ถ้าเชื่อมต่อสำเร็จ ดำเนินการล็อกอิน
         const userType = await login();
         if (userType === "admin") {
+          Cookies.set("userType", userType);  // เก็บค่า userType ใน cookie
           router.push(`/admin`);
         } else {
+          Cookies.set("userType", userType);  // เก็บค่า userType ใน cookie
           router.push(`/customer`);
         }
       } catch (error) {

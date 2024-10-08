@@ -17,6 +17,7 @@ interface OrderProduct {
   Product_Name: string;
   Product_Price: number;
   Product_Image: string;
+  Order_Datetime: string;
 }
 
 export default function History_Order() {
@@ -40,7 +41,8 @@ export default function History_Order() {
           Product_Detail,
           Total_Price,
           orders (
-            Order_Status
+            Order_Status,
+            Order_Datetime
           ),
           products (
             Product_Name,
@@ -69,11 +71,28 @@ export default function History_Order() {
               Total_Price: item.Total_Price,
               Product_Name: product.Product_Name,
               Product_Price: product.Product_Price,
-              Product_Image: product.Product_Image
+              Product_Image: product.Product_Image,
+              Order_Datetime: item.orders.Order_Datetime  // Add order date here
             };
           });
 
-        setOrderProducts(flattenedData as OrderProduct[]);
+        // Group by Product_ID and keep only the latest order for each product
+        const uniqueProducts = flattenedData.reduce(
+          (acc: { [key: number]: OrderProduct }, curr: OrderProduct) => {
+            if (!acc[curr.Product_ID] || new Date(acc[curr.Product_ID].Order_Datetime) < new Date(curr.Order_Datetime)) {
+              acc[curr.Product_ID] = curr;
+            }
+            return acc;
+          },
+          {}
+        );
+
+        // Convert object to array and sort by Order_Date (newest first)
+        const sortedProducts = Object.values(uniqueProducts).sort(
+          (a, b) => new Date(b.Order_Datetime).getTime() - new Date(a.Order_Datetime).getTime()
+        );
+
+        setOrderProducts(sortedProducts);
       }
     } catch (error) {
       setError((error as PostgrestError).message);

@@ -8,6 +8,25 @@ import { supabase } from "@/lib/supabase";
 import { PostgrestError } from "@supabase/supabase-js";
 import { getUserID } from "@/app/auth/getUserID";
 import Swal from "sweetalert2";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"; // Adjust the path if necessary
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface Product {
   Product_ID: string;
@@ -54,6 +73,18 @@ interface MergedProduct extends CartItem {
   Noodles_Name: string[];
 }
 
+// Define the structure of a Promotion
+interface Promotion {
+  Promotion_ID: number;
+  Promotion_Name: string;
+  Promotion_Detail: string;
+  Promotion_Discount: number;
+  Promotion_Timestart: string;
+  Promotion_Timestop: string;
+  Promotion_Status: number;
+  Promotion_Images: string;
+}
+
 export default function Order_Product() {
   const router = useRouter();
   const [quantityMap, setQuantityMap] = useState<{
@@ -68,6 +99,12 @@ export default function Order_Product() {
   const [error, setError] = useState<string | null>(null);
   const [orderIDCounter, setOrderIDCounter] = useState<number>(1); // State for Order_ID counter
   const promotionID = 1; // replace with actual logic to get
+
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedPromo, setSelectedPromo] = useState("");
+  const [promotions, setPromotions] = useState<Promotion[]>([]); // Type promotions state as an array of Promotion objects
+  const [availableCoupons, setAvailableCoupons] = useState(0);
 
   useEffect(() => {
     const fetchLastOrderID = async () => {
@@ -251,6 +288,46 @@ export default function Order_Product() {
     };
   }, [supabase]);
 
+  useEffect(() => {
+    const fetchPromotions = async () => {
+      const { data, error } = await supabase
+        .from("promotions")
+        .select(
+          "Promotion_ID, Promotion_Name, Promotion_Detail, Promotion_Discount, Promotion_Timestart, Promotion_Timestop, Promotion_Status, Promotion_Images"
+        );
+
+      if (error) {
+        console.error("Error fetching promotions:", error);
+      } else {
+        setPromotions(data);
+      }
+    };
+
+    fetchPromotions();
+  }, []);
+
+  const applyPromotion = () => {
+    const promo = promotions.find(
+      (promotion) => promotion.Promotion_Name === selectedPromo
+    );
+    if (promo) {
+      Swal.fire({
+        icon: "success",
+        title: "ใช้งานส่วนลดสำเร็จ",
+        text: `คุณได้เลือกใช้ส่วนลด : ${promo.Promotion_Name} ซึ่งได้ส่วนลด ${promo.Promotion_Discount} บาท.`,
+        confirmButtonText: "ตกลง",
+        confirmButtonColor: "#31A728FF"
+      });
+      setIsOpen(false); // Close the promotion dialog
+    } else {
+      Swal.fire({
+        icon: "error",
+        title: "ข้อผิดพลาด",
+        text: "ส่วนลดที่เลือกไม่ถูกต้อง.",
+      });
+    }
+  };
+
   const handleTimeChange = (newValue: Dayjs | null) => {
     if (newValue) {
       setSelectedTimeDisplay(newValue.format("HH:mm"));
@@ -324,7 +401,35 @@ export default function Order_Product() {
       const quantity = quantityMap[product.Product_ID] || 0;
       totalPrice += product.Total_Price * quantity;
     });
-    return totalPrice;
+
+    if (selectedPromo) {
+      const promo = promotions.find(
+        (promotion) => promotion.Promotion_Name === selectedPromo
+      );
+      if (promo) {
+        totalPrice -= promo.Promotion_Discount;
+      }
+    }
+
+    return totalPrice < 0 ? 0 : totalPrice;
+  };
+
+  const calculateDiscount = () => {
+    // คำนวณส่วนลดจากโปรโมชั่นที่เลือก
+    // ตัวอย่างการคำนวณ
+    const selectedPromotion = promotions.find(
+      (promo) => promo.Promotion_Name === selectedPromo
+    );
+    return selectedPromotion ? selectedPromotion.Promotion_Discount : 0;
+  };
+
+  const handleOrderClick = () => {
+    setIsSheetOpen(true); // Open the confirmation sheet
+  };
+
+  const confirmOrder = () => {
+    insetOrder(); // Call the function to insert the order
+    setIsSheetOpen(false); // Close the sheet after confirming
   };
 
   const insetOrder = async () => {
@@ -344,6 +449,7 @@ export default function Order_Product() {
     });
 
     try {
+      const totalPrice = calculateTotalPrice();
       // Insert into orders table
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
@@ -355,7 +461,7 @@ export default function Order_Product() {
             Receive_Time: selectedTimeDisplay,
             Order_Status: 1,
             Order_Detail: "",
-            Promotion_ID: promotionID,
+            Promotion_ID: selectedPromo ? parseInt(selectedPromo) : null,
             Order_Option: optionOrder,
           },
         ])
@@ -372,13 +478,18 @@ export default function Order_Product() {
         Product_ID: product.Product_ID,
         Product_Qty: quantityMap[product.Product_ID] || 0,
         Product_Size: product.Product_Size || "",
-        Product_Meat: product.Product_Meat?.length ? product.Product_Meat : '{}',  // Handle array properly
-        Product_Option: product.Product_Option?.length ? product.Product_Option : '{}',
-        Product_Noodles: product.Product_Noodles?.length ? product.Product_Noodles : '{}',
+        Product_Meat: product.Product_Meat?.length
+          ? product.Product_Meat
+          : "{}", // Handle array properly
+        Product_Option: product.Product_Option?.length
+          ? product.Product_Option
+          : "{}",
+        Product_Noodles: product.Product_Noodles?.length
+          ? product.Product_Noodles
+          : "{}",
         Product_Detail: product.Product_Detail || "",
-        Total_Price: product.Total_Price || 0,
+        Total_Price: totalPrice || 0,
       }));
-     
 
       // Insert into order_products table
       const { data: orderProductsInsertData, error: orderProductsInsertError } =
@@ -431,7 +542,9 @@ export default function Order_Product() {
         showConfirmButton: false,
         timer: 2000,
       }).then(() => {
-        window.location.href = `order_product/${Order_ID}`;
+        setTimeout(() => {
+          router.push(`order_product/${Order_ID}`);
+        }, 3000); // Navigate after 2 seconds
       });
 
       // Send Flex Message
@@ -872,71 +985,183 @@ export default function Order_Product() {
         <hr className="mx-8 h-px my-2 bg-gray-100 border-0 pt-1 rounded-full mt-5"></hr>
 
         <section className="mx-8 mt-5">
-          <div className="text-lg font-DB_Med">ใช้คูปองส่วนลด</div>
-
-          <div className="pt-3">
-            <div className="relative flex rounded-full shadow-sm">
-              <input
-                type="text"
-                id="hs-trailing-button-add-on-with-icon-and-button"
-                name="hs-trailing-button-add-on-with-icon-and-button"
-                placeholder="ใส่รหัสคูปองเพื่อใช้ส่วนลด"
-                className="py-3 px-6 ps-11 block w-full border border-gray-200 shadow-sm rounded-s-full text-sm"
-              />
-              <div className="absolute inset-y-0 start-0 flex items-center pointer-events-none z-20 ps-4">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="w-6 h-6 text-gray-500"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.25 2.25a3 3 0 0 0-3 3v4.318a3 3 0 0 0 .879 2.121l9.58 9.581c.92.92 2.39 1.186 3.548.428a18.849 18.849 0 0 0 5.441-5.44c.758-1.16.492-2.629-.428-3.548l-9.58-9.581a3 3 0 0 0-2.122-.879H5.25ZM6.375 7.5a1.125 1.125 0 1 0 0-2.25 1.125 1.125 0 0 0 0 2.25Z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-              <button
-                type="button"
-                className="py-2 px-6 rounded-e-full border border-transparent bg-green-600 hover:bg-green-700"
+          <div className="flex justify-between">
+            <div className="flex justify-start">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="1em"
+                height="1em"
+                viewBox="0 0 24 24"
+                className="w-8 h-8 text-green-600"
               >
-                <p className="text-xs font_DB_Med text-white">ใช้งานโค้ด</p>
-              </button>
+                <path
+                  fill="currentColor"
+                  fillRule="evenodd"
+                  d="m10.647 18.646l-5.293-5.292a.5.5 0 0 1 0-.708l6.5-6.5A.5.5 0 0 1 12.207 6h3.586l.069.005Q15.929 6 16 6a2 2 0 0 1 1.995 2.139l.005.068v3.586a.5.5 0 0 1-.146.353l-6.5 6.5a.5.5 0 0 1-.707 0M12 9.672a.5.5 0 0 0-1 0v5.656a.5.5 0 1 0 1 0zm-1.914 2.12a1 1 0 1 1-1.415 1.415a1 1 0 0 1 1.415-1.414m4.243 1.415a1 1 0 1 0-1.415-1.414a1 1 0 0 0 1.415 1.414"
+                  clipRule="evenodd"
+                ></path>
+              </svg>
+              <div className="text-lg font-DB_Med">คูปอง</div>
+            </div>
+            <div className="">
+              <div className="relative flex items-center justify-between rounded-full shadow-sm">
+                <Button
+                  onClick={() => setIsOpen(true)}
+                  variant={"outline"}
+                  className={cn(
+                    "rounded-xl px-5 py-3 w-full bg-white border hover:bg-gray-100 text-gray-800 flex justify-between"
+                  )}
+                >
+                  {selectedPromo ? (
+                    <span className="text-gray-800 font-DB_Med">
+                      {selectedPromo} {/* Display selected coupon name here */}
+                    </span>
+                  ) : (
+                    <span className="text-gray-500 font-DB_Med">ใช้คูปอง</span>
+                  )}
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth="1.5"
+                    stroke="currentColor"
+                    className="w-5 h-5 text-gray-500"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </Button>
+              </div>
             </div>
           </div>
 
-          <div className="text-xs text-red-500 font-DB_v4 mt-4">
-            * คุณมีคูปองที่สามารถใช้ได้จำนวน 2 คูปอง
-          </div>
+          {/* Modal dialog for selecting coupons */}
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent className="w-[24rem] mx-auto px-8 py-6 rounded-xl bg-white shadow-lg">
+              <DialogHeader>
+                <div className="flex items-center space-x-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="1em"
+                    height="1em"
+                    viewBox="0 0 24 24"
+                    className="w-8 h-8 text-green-600"
+                  >
+                    <path
+                      fill="currentColor"
+                      fillRule="evenodd"
+                      d="m10.647 18.646l-5.293-5.292a.5.5 0 0 1 0-.708l6.5-6.5A.5.5 0 0 1 12.207 6h3.586l.069.005Q15.929 6 16 6a2 2 0 0 1 1.995 2.139l.005.068v3.586a.5.5 0 0 1-.146.353l-6.5 6.5a.5.5 0 0 1-.707 0M12 9.672a.5.5 0 0 0-1 0v5.656a.5.5 0 1 0 1 0zm-1.914 2.12a1 1 0 1 1-1.415 1.415a1 1 0 0 1 1.415-1.414m4.243 1.415a1 1 0 1 0-1.415-1.414a1 1 0 0 0 1.415 1.414"
+                      clipRule="evenodd"
+                    ></path>
+                  </svg>
+                  <DialogTitle className="font-DB_Med text-2xl">
+                    รายการโค้ดส่วนลด
+                  </DialogTitle>
+                </div>
+                <DialogDescription className="flex justify-start font-DB_v4 text-lg mx-1 mt-3">
+                  เลือกโค้ดส่วนลดได้ตามความต้องการ
+                </DialogDescription>
+              </DialogHeader>
+
+              {/* Promotion options */}
+              <div className="space-y-4">
+                {promotions.map((promo) => (
+                  <div
+                    key={promo.Promotion_ID}
+                    className={`p-2 border rounded-xl flex items-center justify-between ${
+                      selectedPromo === promo.Promotion_Name
+                        ? "border-green-500 bg-green-50"
+                        : "border-gray-200"
+                    } cursor-pointer`}
+                    onClick={() => setSelectedPromo(promo.Promotion_Name)}
+                  >
+                    <div>
+                      <p className="text-lg font-DB_Med">
+                        {promo.Promotion_Name}
+                      </p>
+                      <p className="text-sm font-DB_Med text-gray-500">
+                        รายละเอียด : {promo.Promotion_Detail}
+                      </p>
+                      <p className="text-sm font-DB_Med text-red-600">
+                        ส่วนลด: {promo.Promotion_Discount} บาท
+                      </p>
+                      <p className="text-sm font-DB_Med text-gray-400">
+                        หมดอายุวันที่ {promo.Promotion_Timestop}
+                      </p>
+                    </div>
+                    {selectedPromo === promo.Promotion_Name && (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth="1.5"
+                        stroke="currentColor"
+                        className="w-6 h-6 text-green-600"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Modal footer */}
+              <DialogFooter className="flex justify-between items-center mt-6 space-x-4">
+                <Button
+                  onClick={applyPromotion}
+                  disabled={!selectedPromo}
+                  className="bg-green-600 hover:bg-green-700 font-DB_Med text-white text-lg rounded-xl w-full py-6"
+                >
+                  ใช้โค้ดส่วนลด
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </section>
 
         <section className="mx-8 mt-5">
           <div className="text-xl text-gray-800 font-DB_Med mt-4">ราคารวม</div>
-          {products.map((product) => (
-            <div key={product.Product_ID} className="flex justify-between mt-3">
-              <div className="text-base text-gray-800 font-DB_Med">
-                {product.Product_Name}{" "}
-                <span className="text-sm">({product.Meat_Name})</span>{" "}
-                {product.Option_Names && (
-                  <span className="text-sm">
-                    (เพิ่ม {product.Option_Names})
-                  </span>
-                )}{" "}
-                x {quantityMap[product.Product_ID]}
+          {products.map((product) => {
+            const quantity = quantityMap[product.Product_ID] || 0;
+            const productTotalPrice = product.Total_Price * quantity;
+
+            return (
+              <div
+                key={product.Product_ID}
+                className="flex justify-between mt-3"
+              >
+                <div className="text-base text-gray-800 font-DB_Med">
+                  {product.Product_Name}{" "}
+                  <span className="text-sm">({product.Meat_Name})</span>{" "}
+                  {product.Option_Names && (
+                    <span className="text-sm">
+                      (เพิ่ม {product.Option_Names})
+                    </span>
+                  )}{" "}
+                  x {quantity}
+                </div>
+                <div className="text-base text-gray-800 font-DB_Med">
+                  ฿{productTotalPrice}.00
+                </div>
               </div>
-              <div className="text-base text-gray-800 font-DB_Med">
-                ฿{product.Total_Price * (quantityMap[product.Product_ID] || 0)}
-                .00
-              </div>
-            </div>
-          ))}
+            );
+          })}
+
           <div className="flex justify-between mt-3">
             <div className="text-base text-gray-800 font-DB_Med">ส่วนลด</div>
-            <div className="text-base text-gray-800 font-DB_Med">฿0</div>
+            <div className="text-base text-red-600 font-DB_Med">
+              -฿{calculateDiscount()}.00
+            </div>
           </div>
 
-          <hr className="h-px my-2 bg-gray-100 border-0 mt-3 pt-1 rounded-full"></hr>
+          <hr className="h-px my-2 bg-gray-100 border-0 mt-3 pt-1 rounded-full" />
 
           <div className="flex justify-between mt-3">
             <div className="text-xl text-gray-800 font-DB_Med">
@@ -952,9 +1177,8 @@ export default function Order_Product() {
       <footer className="mt-12 pt-16">
         <div className="flex justify-center fixed inset-x-0 w-full h-16 max-w-lg -translate-x-1/2 bottom-4 left-1/2">
           <button
-            // href={`order_product/${Order_ID}`}
+            onClick={handleOrderClick}
             className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white rounded-full py-3 px-12 text-lg font-DB_Med"
-            onClick={insetOrder}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -970,6 +1194,43 @@ export default function Order_Product() {
             </svg>
             สั่งอาหารเลย
           </button>
+
+          {isSheetOpen && (
+            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+              <SheetContent side={"bottom"} className="rounded-2xl px-4">
+                <SheetHeader>
+                  {/* Add image at the top */}
+                  <div className="w-[10rem] h-[10rem] bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <img
+                      src="https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/loading_order.png"
+                      alt="Confirmation"
+                      className="w-[8.5rem] h-auto"
+                    />
+                  </div>
+                  <SheetTitle className="font-DB_v4 text-2xl text-gray-800">
+                    ยืนยันการสั่งอาหาร
+                  </SheetTitle>
+                  <SheetDescription className="font-DB_v4 text-lg text-gray-800 mt-5">
+                    คุณแน่ใจหรือว่าต้องการสั่งอาหาร?
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="flex justify-center mt-5 gap-5">
+                  <button
+                    className="bg-gray-300 text-black font-DB_Med text-lg py-2 px-10 rounded-xl"
+                    onClick={() => setIsSheetOpen(false)} // Close without confirming
+                  >
+                    ยกเลิก
+                  </button>
+                  <button
+                    className="bg-green-600 text-white font-DB_Med text-lg py-2 px-10 rounded-xl"
+                    onClick={confirmOrder} // Confirm the order
+                  >
+                    ยืนยัน
+                  </button>
+                </div>
+              </SheetContent>
+            </Sheet>
+          )}
         </div>
       </footer>
     </>
