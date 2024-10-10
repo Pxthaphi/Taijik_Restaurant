@@ -11,19 +11,26 @@ import {
 } from "@nextui-org/react";
 import Swal from "sweetalert2";
 import { supabase } from "@/lib/supabase";
+import dayjs from "dayjs";
+
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
+
+dayjs.extend(timezone);
+dayjs.extend(utc);
 
 interface DialogDemo {
   setIsModalOpen: (isOpen: boolean) => void;
 }
 
 export default function DialogDemo({ setIsModalOpen }: DialogDemo) {
-  const [openTime, setOpenTime] = useState("");
-  const [closeTime, setCloseTime] = useState("");
+  const [openTime, setOpenTime] = useState<string>(""); // Store as string for input fields
+  const [closeTime, setCloseTime] = useState<string>(""); // Store as string for input fields
   const [timeID, setTimeID] = useState();
 
   // Fetch existing times when the modal is opened
   const fetchTimes = async () => {
-    const { data, error } = await supabase.from("time").select("*").single(); // Fetch a single row
+    const { data, error } = await supabase.from("time").select("*").single();
 
     if (error) {
       console.error("Error fetching times:", error);
@@ -32,16 +39,42 @@ export default function DialogDemo({ setIsModalOpen }: DialogDemo) {
 
     if (data) {
       setTimeID(data.ResTime_ID);
-      setOpenTime(data.ResTime_On);
-      setCloseTime(data.ResTime_Off);
+
+      const timeOpenFromDB = data.ResTime_On.replace("+00", ""); // Remove +00
+      const timeCloseFromDB = data.ResTime_Off.replace("+00", ""); // Remove +00
+
+      const currentTime = dayjs.utc(); // Current time in UTC
+
+      // Convert the database times to Thai time
+      const timeOpen = dayjs
+        .utc(`${currentTime.format("YYYY-MM-DD")}T${timeOpenFromDB}Z`)
+        .tz("Asia/Bangkok")
+        .format("HH:mm"); // Convert to Thai time and format as HH:mm
+
+      const timeClose = dayjs
+        .utc(`${currentTime.format("YYYY-MM-DD")}T${timeCloseFromDB}Z`)
+        .tz("Asia/Bangkok")
+        .format("HH:mm"); // Convert to Thai time and format as HH:mm
+
+      setOpenTime(timeOpen); // Set as string for input
+      setCloseTime(timeClose); // Set as string for input
     }
   };
 
   useEffect(() => {
     fetchTimes(); // Fetch times when the modal is opened
+    console.log("", openTime);
+    console.log("", closeTime);
   }, []);
 
-  const handleConfirmTimes = () => {
+  const convertToUTC = (timeString: string) => {
+    return dayjs
+      .tz(`1970-01-01T${timeString}`, "Asia/Bangkok")
+      .utc()
+      .format("HH:mm:ss");
+  };
+
+  const handleConfirmTimes = async () => {
     if (!openTime || !closeTime) {
       Swal.fire({
         icon: "warning",
@@ -53,7 +86,10 @@ export default function DialogDemo({ setIsModalOpen }: DialogDemo) {
       return;
     }
 
-    // Check if closing time is earlier than opening time
+    // Convert times to UTC before saving
+    const openTimeUTC = convertToUTC(openTime);
+    const closeTimeUTC = convertToUTC(closeTime);
+
     if (closeTime <= openTime) {
       Swal.fire({
         icon: "error",
@@ -65,7 +101,6 @@ export default function DialogDemo({ setIsModalOpen }: DialogDemo) {
       return;
     }
 
-    // Show confirmation dialog with SweetAlert2
     Swal.fire({
       title: "ยืนยันการตั้งค่าเวลา",
       html: `เวลาเปิดร้าน: ${openTime} น.<br />เวลาปิดร้าน: ${closeTime} น.`,
@@ -81,7 +116,7 @@ export default function DialogDemo({ setIsModalOpen }: DialogDemo) {
           if (timeID == 1) {
             const { data, error } = await supabase
               .from("time")
-              .update({ ResTime_On: openTime, ResTime_Off: closeTime })
+              .update({ ResTime_On: openTimeUTC, ResTime_Off: closeTimeUTC })
               .eq("ResTime_ID", timeID)
               .select();
             if (error) {
@@ -90,13 +125,12 @@ export default function DialogDemo({ setIsModalOpen }: DialogDemo) {
           } else {
             const { data, error } = await supabase
               .from("time")
-              .insert({ ResTime_On: openTime, ResTime_Off: closeTime });
+              .insert({ ResTime_On: openTimeUTC, ResTime_Off: closeTimeUTC });
             if (error) {
               throw error;
             }
           }
 
-          // If confirmed, close the modal and show success message
           setIsModalOpen(false);
           Swal.fire({
             title: "บันทึกเวลาเปิด-ปิดร้าน",
@@ -143,12 +177,11 @@ export default function DialogDemo({ setIsModalOpen }: DialogDemo) {
                   </label>
                   <Input
                     type="time"
-                    value={openTime}
+                    value={openTime} // openTime is now a string
                     onChange={(e) => {
-                      setOpenTime(e.target.value);
+                      setOpenTime(e.target.value); // Store time directly as a string
                       setCloseTime(""); // Reset closing time when opening time changes
                     }}
-                    className="max-w-sm"
                   />
                 </div>
                 <div>
@@ -157,10 +190,9 @@ export default function DialogDemo({ setIsModalOpen }: DialogDemo) {
                   </label>
                   <Input
                     type="time"
-                    value={closeTime}
+                    value={closeTime} // closeTime is now a string
                     onChange={(e) => setCloseTime(e.target.value)}
-                    className="max-w-sm"
-                    min={openTime} // Set minimum time for closing time
+                    min={openTime} // Set minimum close time based on opening time
                   />
                 </div>
               </div>

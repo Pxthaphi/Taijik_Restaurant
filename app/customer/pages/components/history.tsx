@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { PostgrestError } from "@supabase/supabase-js";
+import { getUserID } from "@/app/auth/getUserID";
 
 // Define the OrderProduct interface
 interface OrderProduct {
@@ -41,6 +42,7 @@ export default function History_Order() {
           Product_Detail,
           Total_Price,
           orders (
+            User_ID,
             Order_Status,
             Order_Datetime
           ),
@@ -49,7 +51,8 @@ export default function History_Order() {
             Product_Price,
             Product_Image
           )
-        `);
+        `)
+        .eq("orders.User_ID",getUserID());
 
       if (error) {
         throw error;
@@ -91,6 +94,8 @@ export default function History_Order() {
         const sortedProducts = Object.values(uniqueProducts).sort(
           (a, b) => new Date(b.Order_Datetime).getTime() - new Date(a.Order_Datetime).getTime()
         );
+
+        console.table(sortedProducts);
 
         setOrderProducts(sortedProducts);
       }

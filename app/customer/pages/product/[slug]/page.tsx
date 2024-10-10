@@ -747,7 +747,7 @@ export default function Product_Detail({ params }: PageProps) {
                 <div className="pt-2">
                   <div className="font-DB_v4 text-sm">รีวิว</div>
                   <Link
-                    href={`../review/${params.slug}`}
+                    href={`../review`}
                     className="text-sm font-DB_v4 text-gray-700 underline hover:no-underline"
                   >
                     73 review

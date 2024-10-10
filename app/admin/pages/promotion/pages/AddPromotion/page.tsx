@@ -256,7 +256,7 @@ export default function Add_Promotion() {
                       ></path>
                     </g>
                   </svg>
-                  <p className="mt-5">
+                  <p className="mt-5 font-DB_Med">
                     กรุณาเลือกรูปBanner โปรโมชั่นที่ต้องการเพิ่ม{" "}
                     <span className="text-blue-600 cursor-pointer">
                       เลือกเลย
@@ -305,7 +305,7 @@ export default function Add_Promotion() {
           </div>
           <div className="form-control py-4">
             <label htmlFor="promotionDiscount" className="label">
-              ส่วนลด (%)
+              ส่วนลด (฿)
             </label>
             <Input
               fullWidth

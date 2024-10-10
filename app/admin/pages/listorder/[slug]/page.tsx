@@ -33,6 +33,7 @@ interface OrderProduct {
   Product_Size: string;
   Product_Meat: number | number[]; // Adjusted to handle both single values and arrays
   Product_Option: number | number[]; // Adjusted to handle both single values and arrays
+  Product_Noodles: number | number[];
   Product_Detail: string;
   Total_Price: number;
 }
@@ -65,6 +66,7 @@ interface MergedProduct extends OrderProduct {
   Product_Image: string;
   Meat_Names: string[]; // Corrected to match the expected array
   Option_Names: string[];
+  Noodles_Names: string[]; // Add a field to store noodle type names
 }
 
 const statusNames = {
@@ -196,7 +198,9 @@ export default function ListOrder_Status({ params }: PageProps) {
           Array.isArray(op.Product_Meat) ? op.Product_Meat : [op.Product_Meat]
         );
         const optionIds = orderProductsData.flatMap((op) =>
-          Array.isArray(op.Product_Option) ? op.Product_Option : [op.Product_Option]
+          Array.isArray(op.Product_Option)
+            ? op.Product_Option
+            : [op.Product_Option]
         );
 
         const { data: productsData, error: productsError } = await supabase
@@ -220,35 +224,60 @@ export default function ListOrder_Status({ params }: PageProps) {
 
         if (optionsError) throw optionsError;
 
-        const mergedProducts = orderProductsData.map((orderProduct: OrderProduct) => {
-          const product = productsData.find(
-            (p) => p.Product_ID === orderProduct.Product_ID
-          );
+        // Fetch noodle types
+        const noodleIds = orderProductsData.flatMap((op) =>
+          Array.isArray(op.Product_Option)
+            ? op.Product_Noodles
+            : [op.Product_Noodles]
+        );
 
-          const meatIds = Array.isArray(orderProduct.Product_Meat)
-            ? orderProduct.Product_Meat
-            : [orderProduct.Product_Meat];
+        const { data: noodlesData, error: noodlesError } = await supabase
+          .from("noodles_type")
+          .select("*")
+          .in("Noodles_ID", noodleIds);
 
-          const meatNames = meatsData
-            .filter((meat) => meatIds.includes(meat.Meat_ID))
-            .map((meat) => meat.Meat_Name);
+        if (noodlesError) throw noodlesError;
 
-          const productOptionIds = Array.isArray(orderProduct.Product_Option)
-            ? orderProduct.Product_Option
-            : [orderProduct.Product_Option];
+        const mergedProducts = orderProductsData.map(
+          (orderProduct: OrderProduct) => {
+            const product = productsData.find(
+              (p) => p.Product_ID === orderProduct.Product_ID
+            );
 
-          const optionNames = optionsData
-            .filter((opt) => productOptionIds.includes(opt.Option_ID))
-            .map((opt) => opt.Option_Name);
+            const meatIds = Array.isArray(orderProduct.Product_Meat)
+              ? orderProduct.Product_Meat
+              : [orderProduct.Product_Meat];
 
-          return {
-            ...orderProduct,
-            Product_Name: product?.Product_Name || "",
-            Product_Image: product?.Product_Image || "",
-            Meat_Names: meatNames,
-            Option_Names: optionNames,
-          };
-        });
+            const meatNames = meatsData
+              .filter((meat) => meatIds.includes(meat.Meat_ID))
+              .map((meat) => meat.Meat_Name);
+
+            const productOptionIds = Array.isArray(orderProduct.Product_Option)
+              ? orderProduct.Product_Option
+              : [orderProduct.Product_Option];
+
+            const optionNames = optionsData
+              .filter((opt) => productOptionIds.includes(opt.Option_ID))
+              .map((opt) => opt.Option_Name);
+
+            const noodleIds = Array.isArray(orderProduct.Product_Noodles)
+              ? orderProduct.Product_Noodles
+              : [orderProduct.Product_Noodles];
+
+            const noodleNames = noodlesData
+              .filter((noodle) => noodleIds.includes(noodle.Noodles_ID))
+              .map((noodle) => noodle.Noodles_Name);
+
+            return {
+              ...orderProduct,
+              Product_Name: product?.Product_Name || "",
+              Product_Image: product?.Product_Image || "",
+              Meat_Names: meatNames,
+              Option_Names: optionNames,
+              Noodles_Names: noodleNames, // Include the noodle names
+            };
+          }
+        );
 
         setOrder(typedOrderData);
         setProducts(mergedProducts);
@@ -342,7 +371,7 @@ export default function ListOrder_Status({ params }: PageProps) {
     const sendNotification = async () => {
       if (orderStatus && orderStatus !== lastNotifiedStatus) {
         try {
-          if(orderStatus){
+          if (orderStatus) {
             await sendOrderNotification();
           }
           setLastNotifiedStatus(orderStatus); // อัปเดตสถานะที่ส่งการแจ้งเตือนล่าสุด
@@ -392,13 +421,14 @@ export default function ListOrder_Status({ params }: PageProps) {
 
     // สร้างรายการอาหาร
     const orderItems = products.map((product) => {
-      const quantity = quantityMap[product.Product_ID] || 1; // ค่าเริ่มต้นเป็น 1 ถ้าจำนวนไม่ระบุ
-      const meatText = product.Meat_Names
-        ? ` (${product.Meat_Names})`
-        : "";
+      const quantity = quantityMap[product.Product_ID]; // ค่าเริ่มต้นเป็น 1 ถ้าจำนวนไม่ระบุ
+      const meatText = product.Meat_Names ? ` (${product.Meat_Names})` : "";
       const optionsText = product.Option_Names
         ? ` (เพิ่ม ${product.Option_Names})`
         : "";
+      const noodlesText = product.Noodles_Names
+        ? ` (เส้น: ${product.Noodles_Names.join(", ")})`
+        : ""; // Add noodles information
 
       return {
         type: "box",
@@ -406,7 +436,7 @@ export default function ListOrder_Status({ params }: PageProps) {
         contents: [
           {
             type: "text",
-            text: `${product.Product_Name} ${meatText} ${optionsText} x ${quantity}`,
+            text: `${product.Product_Name} ${meatText} ${optionsText} ${noodlesText} x ${quantity}`,
             flex: 0,
             size: "sm",
           },
@@ -727,7 +757,10 @@ export default function ListOrder_Status({ params }: PageProps) {
               <Avatar src={userPicture} className="w-7 h-7 me-2" />
               <p className="text-lg font-DB_Med">{userName}</p>
             </div>
-            <Link href={`tel:${telephone}`} className="flex justify-center items-center">
+            <Link
+              href={`tel:${telephone}`}
+              className="flex justify-center items-center"
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="1em"
@@ -767,6 +800,11 @@ export default function ListOrder_Status({ params }: PageProps) {
                       ตัวเลือกเพิ่มเติม: {product.Option_Names.join(", ")}
                     </p>
                   )}
+                  {product.Noodles_Names.length > 0 && (
+                    <p className="text-sm text-gray-500 font-DB_v4">
+                      ชนิดเส้น: {product.Noodles_Names.join(", ")}
+                    </p>
+                  )}
                   {product.Product_Detail != "" && (
                     <p className="text-sm text-gray-500 font-DB_v4">
                       รายละเอียดเพิ่มเติม : {product.Product_Detail}
@@ -789,10 +827,14 @@ export default function ListOrder_Status({ params }: PageProps) {
           <div className="text-xl text-gray-800 font-DB_Med mt-4">ราคารวม</div>
           {products.map((product) => (
             <div key={product.Product_ID} className="flex justify-between mt-3">
-              <div className="text-base text-gray-800 font-DB_Med">
-                {product.Product_Name} ({product.Meat_Names.join(", ")}) (เพิ่ม{" "}
-                {product.Option_Names.join(", ")}) x{" "}
-                {quantityMap[product.Product_ID]}
+              <div className="text-base text-gray-800 font-DB_Med flex flex-wrap items-center space-x-2">
+                {product.Product_Name}{" "}
+                {product.Noodles_Names.length > 0 &&
+                  product.Noodles_Names.join(", ")}{" "}
+                ({product.Meat_Names.join(", ")}) (เพิ่ม{" "}
+                {product.Option_Names.length > 0 &&
+                  product.Option_Names.join(", ")}{" "}
+                x {quantityMap[product.Product_ID]}
               </div>
               <div className="text-base text-gray-800 font-DB_Med">
                 ฿{product.Total_Price * (quantityMap[product.Product_ID] || 0)}
@@ -821,12 +863,13 @@ export default function ListOrder_Status({ params }: PageProps) {
         <section className="mx-8 mt-3">
           <div className="text-xl text-gray-800 font-DB_Med">หมายเหตุ</div>
           <Textarea
-            placeholder=""
+            placeholder="ไม่มีหมายเหตุ"
             className="max-w-full pt-2 font-DB_v4"
-            defaultValue=""
+            defaultValue={order?.Order_Detail || ""}
             isReadOnly
           />
         </section>
+
         {isModalOpen && (
           <Modal_CancelOrder
             setIsModalOpen={setIsModalOpen}

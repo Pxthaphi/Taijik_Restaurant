@@ -19,6 +19,7 @@ interface ProductDetail {
   Product_Size: string;
   Meat_Name: string[]; // Updated to be an array
   Option_Names: string[]; // Updated to be an array
+  Noodle_Names: string[];
   Total_Price: number;
 }
 
@@ -93,18 +94,22 @@ export default function HistoryOrder() {
         { data: products, error: productsError },
         { data: productMeats, error: productMeatsError },
         { data: productOptions, error: productOptionsError },
+        { data: noodlesData, error: noodlesError },
       ] = await Promise.all([
         supabase.from("order_products").select("*").in("Order_ID", orderIds),
         supabase.from("products").select("*"),
         supabase.from("product_meat").select("*"),
         supabase.from("product_option").select("*"),
+        supabase.from("noodles_type").select("*"),
       ]);
 
       if (orderProductsError) throw orderProductsError;
       if (productsError) throw productsError;
       if (productMeatsError) throw productMeatsError;
       if (productOptionsError) throw productOptionsError;
+      if (noodlesError) throw noodlesError;
 
+      // Now map through the orders and enrich the data with product details
       const enrichedOrders = orders.map((order: FetchedOrder) => {
         const orderProductsForOrder = orderProducts.filter(
           (op: any) => op.Order_ID === order.Order_ID
@@ -122,27 +127,40 @@ export default function HistoryOrder() {
                   (m: any) => m.Meat_ID === meatID
                 );
                 return meat ? meat.Meat_Name : "No meat";
-              }).join(", ") // Join meat names with a comma
+              }).join(", ")
             : [
                 productMeats.find((m: any) => m.Meat_ID === op.Product_Meat)
                   ?.Meat_Name || "No meat",
-              ].join(", "); // Join single meat name with a comma
+              ].join(", ");
 
           // Handle product options
-          const optionNames = op.Product_Option.map((optionID: bigint) => {
-            const option = productOptions.find(
-              (o: any) => o.Option_ID === optionID
-            );
-            return option ? option.Option_Name : "No option";
-          }).join(", "); // Join option names with a comma
+          const optionNames = Array.isArray(op.Product_Option)
+            ? op.Product_Option.map((optionID: bigint) => {
+                const option = productOptions.find(
+                  (o: any) => o.Option_ID === optionID
+                );
+                return option ? option.Option_Name : "No option";
+              }).join(", ")
+            : "No options";
+
+          // Handle noodles
+          const noodleNames = Array.isArray(op.Product_Noodles)
+            ? op.Product_Noodles.map((noodleID: bigint) => {
+                const noodle = noodlesData.find(
+                  (n: any) => n.Noodles_ID === noodleID
+                );
+                return noodle ? noodle.Noodles_Name : "No noodles";
+              }).join(", ")
+            : "No noodles";
 
           return {
             Product_ID: product?.Product_ID,
             Product_Name: product?.Product_Name,
             Product_Qty: op.Product_Qty,
-            Product_Size: op.Product_Size,
-            Meat_Name: meatNames, // Meat names as a single string
-            Option_Names: optionNames, // Option names as a single string
+            Product_Size: op.Product_Size || "N/A",
+            Meat_Name: meatNames,
+            Option_Names: optionNames,
+            Noodle_Names: noodleNames, // Add noodle names
             Total_Price: op.Total_Price,
           };
         });
@@ -155,7 +173,7 @@ export default function HistoryOrder() {
 
       setState((prevState) => ({
         ...prevState,
-        orders: enrichedOrders,
+        orders: enrichedOrders, // Assign enrichedOrders here
         orderStatus: enrichedOrders[0]?.Order_Status || 0,
         loading: false,
       }));
@@ -434,13 +452,18 @@ function OrderStatus({
                 <div className="text-gray-600 font-DB_v4">
                   {order.products.map((product, index) => (
                     <div key={product.Product_ID} className="mb-1 text-sm">
-                      {product.Product_Name} ({product.Meat_Name}) x
+                      {product.Product_Name}
+                      {product.Meat_Name && ` (${product.Meat_Name})`} x{" "}
                       {product.Product_Qty} <br />
-                      (ขนาด {product.Product_Size}, เพิ่ม {product.Option_Names}
+                      (ขนาด {product.Product_Size}
+                      {product.Noodle_Names && `, เส้น ${product.Noodle_Names}`}
+                      {product.Option_Names &&
+                        `, เพิ่ม ${product.Option_Names}`}
                       ){index < order.products.length - 1 && ", "}
                     </div>
                   ))}
                 </div>
+
                 <p className="font-DB_v4 text-sm">
                   เวลาที่สั่ง : {order.Order_Datetime} น.
                 </p>

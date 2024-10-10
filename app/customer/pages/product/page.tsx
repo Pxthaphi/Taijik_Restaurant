@@ -180,7 +180,7 @@ export default function Show_Product() {
 
       {/* ประเภทอาหาร */}
       <section className="animate-fade-up animate-duration-[1000ms]">
-        <div className="flex items-center justify-between mx-6 mt-7">
+        {/* <div className="flex items-center justify-between mx-6 mt-7">
           <div className="font-DB_Med text-xl">ประเภทเมนูอาหาร</div>
           <button
             onClick={openSheet} // เรียกใช้ฟังก์ชันเพื่อเปิด sheet เมื่อคลิก
@@ -188,7 +188,7 @@ export default function Show_Product() {
           >
             ดูทั้งหมด
           </button>
-        </div>
+        </div> */}
 
         {/* Sheet จะถูกแสดงเมื่อ isSheetOpen เป็น true */}
         {isSheetOpen && (
@@ -295,12 +295,6 @@ export default function Show_Product() {
       <section className="animate-fade-up animate-duration-[1000ms]">
         <div className="flex items-center justify-between mx-6 mt-7">
           <div className="font-DB_Med text-xl">สั่งอีกครั้ง</div>
-          <Link
-            href=""
-            className="inline-block bg-green-500 hover:bg-green-600 text-white text-xs font-DB_Med py-1 px-3 rounded-2xl"
-          >
-            ดูทั้งหมด
-          </Link>
         </div>
         <div className="mx-6 mt-6">
           <History_Order />

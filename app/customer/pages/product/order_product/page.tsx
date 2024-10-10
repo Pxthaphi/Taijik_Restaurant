@@ -27,6 +27,22 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import dayjs from "dayjs";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+import timezone from "dayjs/plugin/timezone";
+import utc from "dayjs/plugin/utc";
+
+// Extend dayjs with plugins
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
+dayjs.extend(timezone);
+dayjs.extend(utc);
+
+interface Time {
+  ResTime_On: Time;
+  ResTime_Off: Time;
+}
 
 interface Product {
   Product_ID: string;
@@ -105,6 +121,85 @@ export default function Order_Product() {
   const [selectedPromo, setSelectedPromo] = useState("");
   const [promotions, setPromotions] = useState<Promotion[]>([]); // Type promotions state as an array of Promotion objects
   const [availableCoupons, setAvailableCoupons] = useState(0);
+
+  const fetchRestaurantTimes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("time")
+        .select("ResTime_On, ResTime_Off")
+        .single();
+
+      if (error) {
+        console.error("Error fetching restaurant times:", error);
+        return;
+      }
+
+      if (data) {
+        const currentTime = dayjs.utc(); // เวลาปัจจุบันใน UTC
+
+        // เวลาเปิดและปิดร้านที่ได้จากฐานข้อมูล
+        const timeOpenFromDB = data.ResTime_On.replace("+00", ""); // ลบ +00 ออก
+        const timeCloseFromDB = data.ResTime_Off.replace("+00", ""); // ลบ +00 ออก
+
+        // สร้างเวลาเปิดและปิดใหม่โดยใช้ชั่วโมงและนาทีเท่านั้น
+        const timeOpen = dayjs
+          .utc(`${currentTime.format("YYYY-MM-DD")}T${timeOpenFromDB}Z`)
+          .set("year", 2000)
+          .set("month", 0)
+          .set("date", 1);
+        let timeClose = dayjs
+          .utc(`${currentTime.format("YYYY-MM-DD")}T${timeCloseFromDB}Z`)
+          .set("year", 2000)
+          .set("month", 0)
+          .set("date", 1);
+
+        // แปลงเวลาปัจจุบันให้เหลือแค่ชั่วโมงและนาที
+        const currentTimeFixed = currentTime
+          .set("year", 2000)
+          .set("month", 0)
+          .set("date", 1);
+
+        // กรณีที่เวลาปิดข้ามวัน
+        let isOpen;
+        if (timeClose.isBefore(timeOpen)) {
+          // ถ้าเวลาปิดน้อยกว่าเวลาเปิด แปลว่าข้ามวัน
+          isOpen =
+            currentTimeFixed.isSameOrAfter(timeOpen) ||
+            currentTimeFixed.isBefore(timeClose);
+        } else {
+          // กรณีที่ไม่ข้ามวัน
+          isOpen =
+            currentTimeFixed.isSameOrAfter(timeOpen) &&
+            currentTimeFixed.isSameOrBefore(timeClose);
+        }
+
+        console.log("Current Time (UTC):", currentTimeFixed.format("HH:mm")); // แสดงเวลาปัจจุบันในรูปแบบ HH:mm
+        console.log("Time Open (UTC):", timeOpen.format("HH:mm")); // แสดงเวลาเปิดร้าน
+        console.log("Time Close (UTC):", timeClose.format("HH:mm")); // แสดงเวลาปิดร้าน
+        console.log("Is Open:", isOpen);
+
+        if (!isOpen) {
+          Swal.fire({
+            icon: "info",
+            title: "ร้านปิดอยู่",
+            text: "ขณะนี้ร้านไม่ได้เปิดให้บริการ กรุณากลับมาสั่งใหม่ในช่วงเวลาร้านเปิดอีกครั้ง",
+            timer: 3000,
+            showConfirmButton: false,
+          }).then(() => {
+            setTimeout(() => {
+              router.push("../../");
+            }, 3000); // Navigate after 2 seconds
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchRestaurantTimes();
+  }, []);
 
   useEffect(() => {
     const fetchLastOrderID = async () => {
@@ -316,7 +411,7 @@ export default function Order_Product() {
         title: "ใช้งานส่วนลดสำเร็จ",
         text: `คุณได้เลือกใช้ส่วนลด : ${promo.Promotion_Name} ซึ่งได้ส่วนลด ${promo.Promotion_Discount} บาท.`,
         confirmButtonText: "ตกลง",
-        confirmButtonColor: "#31A728FF"
+        confirmButtonColor: "#31A728FF",
       });
       setIsOpen(false); // Close the promotion dialog
     } else {
@@ -543,7 +638,7 @@ export default function Order_Product() {
         timer: 2000,
       }).then(() => {
         setTimeout(() => {
-          router.push(`order_product/${Order_ID}`);
+          router.push(`product/order_product/${Order_ID}`);
         }, 3000); // Navigate after 2 seconds
       });
 
@@ -565,9 +660,13 @@ export default function Order_Product() {
     // สร้างรายการอาหาร
     const orderItems = products.map((product) => {
       const quantity = quantityMap[product.Product_ID] || 1; // ค่าเริ่มต้นเป็น 1 ถ้าจำนวนไม่ระบุ
+      const meatText = product.Meat_Name ? ` (${product.Meat_Name})` : "";
       const optionsText = product.Option_Names
         ? ` (เพิ่ม ${product.Option_Names})`
         : "";
+      const noodlesText = product.Noodles_Name
+        ? ` (เส้น: ${product.Noodles_Name.join(", ")})`
+        : ""; // Add noodles information
 
       return {
         type: "box",
@@ -575,7 +674,7 @@ export default function Order_Product() {
         contents: [
           {
             type: "text",
-            text: `${product.Product_Name} (${product.Meat_Name})${optionsText} x ${quantity}`,
+            text: `${product.Product_Name} ${meatText} ${optionsText} ${noodlesText} x ${quantity}`,
             flex: 0,
             size: "sm",
           },

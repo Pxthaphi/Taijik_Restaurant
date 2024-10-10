@@ -1,11 +1,57 @@
 "use client";
 import Chart_Circle from "./components/charts_circle";
 import Chart_Row from "./components/charts_row";
-import DualAxisChart from "./components/chart_dual";
+import Chart_Price from "./components/chart_price";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function History() {
   const router = useRouter();
+
+  // State variables to store fetched data
+  const [totalCustomers, setTotalCustomers] = useState(0);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [ongoingOrders, setOngoingOrders] = useState(0);
+  const [completedOrders, setCompletedOrders] = useState(0);
+
+  // Fetch data from Supabase
+  useEffect(() => {
+    async function fetchSummaryData() {
+      // 1. Fetch total customers where User_Type = 'customer'
+      let { count: totalCustomerCount } = await supabase
+        .from("users")
+        .select("*", { count: "exact" })
+        .eq("User_Type", "customer");
+
+      // 2. Fetch total orders from the 'orders' table
+      let { count: totalOrderCount } = await supabase
+        .from("orders")
+        .select("*", { count: "exact" });
+
+      // 3. Fetch ongoing orders where Order_Status is between 1 and 3
+      let { count: ongoingOrderCount } = await supabase
+        .from("orders")
+        .select("*", { count: "exact" })
+        .in("Order_Status", [1, 2, 3]);
+
+      console.table(ongoingOrderCount);
+
+      // 4. Fetch completed orders where Order_Status = 4
+      let { count: completedOrderCount } = await supabase
+        .from("orders")
+        .select("*", { count: "exact" })
+        .eq("Order_Status", 4);
+
+      // Update state variables
+      setTotalCustomers(totalCustomerCount || 0);
+      setTotalOrders(totalOrderCount || 0);
+      setOngoingOrders(ongoingOrderCount || 0);
+      setCompletedOrders(completedOrderCount || 0);
+    }
+
+    fetchSummaryData();
+  }, []); // Empty dependency array ensures this runs once on component mount
 
   const navigateBack = () => {
     router.back();
@@ -33,13 +79,15 @@ export default function History() {
               />
             </svg>
           </div>
-          <div className="text-white font-DB_Med text-2xl pt-0.5">สรุปผลรายการคำสั่งซื้อ</div>
+          <div className="text-white font-DB_Med text-2xl pt-0.5">
+            สรุปผลรายการคำสั่งซื้อ
+          </div>
         </div>
         <section className="grid grid-cols-2 gap-3 mt-8 px-4 mx-3">
           <div className="flex items-center justify-between p-2 bg-white rounded-xl shadow-md h-[5rem]">
             <div className="ml-2 me-4">
               <div className="text-xs text-gray-500">จำนวนลูกค้าทั้งหมด</div>
-              <div className="text-lg font-semibold">40,689</div>
+              <div className="text-lg font-semibold">{totalCustomers}</div>
             </div>
             <div className="p-2 bg-indigo-100 rounded-full">
               <svg
@@ -60,7 +108,7 @@ export default function History() {
           <div className="flex items-center justify-between p-2 bg-white rounded-xl shadow-md h-[5rem]">
             <div className="ml-2 me-4">
               <div className="text-xs text-gray-500">คำสั่งซื้อทั้งหมด</div>
-              <div className="text-lg font-semibold">10,293</div>
+              <div className="text-lg font-semibold">{totalOrders}</div>
             </div>
             <div className="p-2 bg-yellow-100 rounded-full">
               <svg
@@ -83,7 +131,7 @@ export default function History() {
           <div className="flex items-center justify-between p-2 bg-white rounded-xl shadow-md h-[5rem]">
             <div className="ml-2 me-4">
               <div className="text-xs text-gray-500">รอดำเนินการ</div>
-              <div className="text-lg font-semibold">2,040</div>
+              <div className="text-lg font-semibold">{ongoingOrders}</div>
             </div>
             <div className="p-2 bg-sky-100 rounded-full">
               <svg
@@ -109,7 +157,7 @@ export default function History() {
               <div className="text-xs text-gray-500">
                 คำสั่งซื้อที่เสร็จสิ้น
               </div>
-              <div className="text-lg font-semibold">150</div>
+              <div className="text-lg font-semibold">{completedOrders}</div>
             </div>
             <div className="p-2 bg-green-100 rounded-full">
               <svg
@@ -133,14 +181,14 @@ export default function History() {
 
       <section className="grid grid-rows-2 mt-8">
         <div className="px-4">
-          <DualAxisChart />
+          <Chart_Price />
         </div>
-        <div className="px-8 mt-5">
+        {/* <div className="px-8 mt-5">
           <Chart_Circle />
         </div>
         <div className="px-8 mt-5">
           <Chart_Row />
-        </div>
+        </div> */}
       </section>
     </div>
   );

@@ -58,7 +58,7 @@ export function DatePickerWithRange({
             variant={"outline"}
             className={cn(
               "w-full h-[3rem] justify-start text-left font-normal rounded-xl",
-              !date && "text-muted-foreground"
+              !date && "text-muted-foreground font-DB_Med"
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
@@ -72,7 +72,7 @@ export function DatePickerWithRange({
                 formatWithBuddhistYear(date.from)
               )
             ) : (
-              <span>เลือกวันที่</span> // Thai text for "Select Date"
+              <span className="font-DB_Med">เลือกวันที่</span> // Thai text for "Select Date"
             )}
           </Button>
         </PopoverTrigger>

@@ -194,12 +194,6 @@ export default function Customer() {
                   className="pl-10 w-full pr-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:border-indigo-500"
                 />
               </div>
-              {/* <button
-                  onClick={logout}
-                  className="block w-full px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400"
-                >
-                  Logout
-                </button> */}
             </div>
           </div>
         </div>

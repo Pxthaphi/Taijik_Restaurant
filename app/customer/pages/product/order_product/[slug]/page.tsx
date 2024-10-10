@@ -5,6 +5,16 @@ import Link from "next/link";
 import Modal_CancelOrder from "./components/modal-cancel";
 import confetti from "canvas-confetti";
 import { supabase } from "@/lib/supabase";
+import ReviewDrawer from "./components/modal-review"; // Assuming the modal is in a components folder
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 
 interface PageProps {
   params: {
@@ -35,6 +45,9 @@ export default function Order_Status({ params }: PageProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [orderProducts, setOrderProducts] = useState<OrderProduct[]>([]);
   const [cancelOrderId, setCancelOrderId] = useState<string>("");
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false); // Add a new state for tracking submission
 
   let Status_text = "";
   let Status_detail = "";
@@ -49,6 +62,12 @@ export default function Order_Status({ params }: PageProps) {
 
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (isSubmitted) {
+      setIsSheetOpen(true); // Open the Sheet when the review is successfully submitted
+    }
+  }, [isSubmitted]);
 
   useEffect(() => {
     if (!loading && statusOrder === 4) {
@@ -207,6 +226,18 @@ export default function Order_Status({ params }: PageProps) {
     };
   }, [params.slug, supabase]);
 
+  useEffect(() => {
+    if (statusOrder === 4) {
+      // Add delay of 8 seconds (8000 milliseconds)
+      const timer = setTimeout(() => {
+        setIsReviewModalOpen(true); // Open review modal when order is completed
+      }, 2000);
+
+      // Clean up the timer if the component unmounts before the timer finishes
+      return () => clearTimeout(timer);
+    }
+  }, [statusOrder]);
+
   // Function to open the modal
   const openModal = (orderId: string) => {
     setCancelOrderId(orderId);
@@ -344,9 +375,33 @@ export default function Order_Status({ params }: PageProps) {
             {Status_detail}
           </p>
 
-          <p className="text-base font-DB_v4 text-gray-600 mt-2">
-            เลขคำสั่งซื้อ {params.slug}
-          </p>
+          <div className="flex justify-between items-center mt-2">
+            <p className="text-base font-DB_v4 text-gray-600">
+              เลขคำสั่งซื้อ {params.slug}
+            </p>
+            <a
+              href="tel:+66640091297"
+              className="flex items-center justify-start bg-green-100 rounded-full p-1 w-fit"
+            >
+              <div className="flex items-center bg-green-600 rounded-full p-1">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="1.2em"
+                  height="1.2em"
+                  viewBox="0 0 24 24"
+                  className="w-4 h-4 text-white pt-0.5"
+                >
+                  <path
+                    fill="currentColor"
+                    d="m16.556 12.906l-.455.453s-1.083 1.076-4.038-1.862s-1.872-4.014-1.872-4.014l.286-.286c.707-.702.774-1.83.157-2.654L9.374 2.86C8.61 1.84 7.135 1.705 6.26 2.575l-1.57 1.56c-.433.432-.723.99-.688 1.61c.09 1.587.808 5 4.812 8.982c4.247 4.222 8.232 4.39 9.861 4.238c.516-.048.964-.31 1.325-.67l1.42-1.412c.96-.953.69-2.588-.538-3.255l-1.91-1.039c-.806-.437-1.787-.309-2.417.317"
+                  ></path>
+                </svg>
+              </div>
+              <p className="text-[15px] font-DB_Med text-green-600 ml-1 mr-2">
+                ติดต่อร้านอาหาร
+              </p>
+            </a>
+          </div>
           <hr className="h-px my-2 bg-gray-100 border-0 pt-1 rounded-full mt-5"></hr>
         </section>
         {orderProducts.map((product) => (
@@ -359,11 +414,15 @@ export default function Order_Status({ params }: PageProps) {
                   </p>
                 </div>
                 <div className="-my-0.5">
-                  <h3 className="flex flex-row text-lg font-DB_v4 text-gray-700 space-x-1">
+                  <h3 className="flex flex-wrap text-lg font-DB_v4 text-gray-700 items-center space-x-1">
                     <span>{product.Product_Name}</span>
-                    {product.Noodles_Name && <p>{product.Noodles_Name}</p>}
-                    {product.Meat_Name && <p>({product.Meat_Name})</p>}
-                    {product.Product_Size && <p>{product.Product_Size}</p>}
+                    {product.Noodles_Name && (
+                      <span>{product.Noodles_Name}</span>
+                    )}
+                    {product.Meat_Name && <span>({product.Meat_Name})</span>}
+                    {product.Product_Size && (
+                      <span>{product.Product_Size}</span>
+                    )}
                   </h3>
 
                   {product.Option_Name && (
@@ -407,6 +466,48 @@ export default function Order_Status({ params }: PageProps) {
             setIsModalOpen={setIsModalOpen}
             orderId={cancelOrderId}
           />
+        )}
+        {isReviewModalOpen && (
+          <ReviewDrawer
+            orderId={params.slug}
+            orderProducts={orderProducts} // Assuming you have a list of products in the order
+            setIsModalOpen={setIsReviewModalOpen}
+            setIsSubmitted={setIsSubmitted} // Add a prop to toggle submission
+          />
+        )}
+
+        {isSheetOpen && (
+          <Drawer open={isSheetOpen} onClose={() => setIsSheetOpen(false)}>
+            <DrawerContent>
+              <div className="mx-auto w-full max-w-lg my-5">
+                <DrawerHeader>
+                  {/* Add image at the top */}
+                  <div className="w-[10rem] h-[10rem] bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <img
+                      src="https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/failed_order.png"
+                      alt="Confirmation"
+                      className="w-[8.5rem] h-auto"
+                    />
+                  </div>
+                  <DrawerTitle className="font-DB_v4 text-2xl text-gray-800">
+                    ขอบคุณสำหรับความคิดเห็นของคุณ!!
+                  </DrawerTitle>
+                  <DrawerDescription className="font-DB_v4 text-lg text-gray-800 mt-5">
+                    ทางร้านต้องขออภัยหากเกิดมีข้อผิดพลาดประการใด
+                    ขอบคุณที่ใช้บริการร้านอาหารใต้จิกค่ะ
+                  </DrawerDescription>
+                </DrawerHeader>
+                <div className="flex justify-center mt-5 gap-5">
+                  <button
+                    className="bg-green-600 text-white font-DB_Med text-lg py-2 px-[10rem] rounded-xl hover:bg-green-700"
+                    onClick={() => setIsSheetOpen(false)} // Close the drawer
+                  >
+                    เข้าใจแล้ว
+                  </button>
+                </div>
+              </div>
+            </DrawerContent>
+          </Drawer>
         )}
       </main>
       <footer className="flex justify-center fixed bottom-0 inset-x-0 mb-8">

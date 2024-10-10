@@ -284,7 +284,7 @@ export default function Edit_Promotion({ params }: PageProps) {
       <main className="w-full">
         <div className="container max-w-md mx-auto px-4">
           <div className="form-control py-4">
-            <label htmlFor="promotionName" className="label">
+            <label htmlFor="promotionName" className="label font-DB_Med">
               ชื่อโปรโมชั่น
             </label>
             <Input
@@ -295,11 +295,12 @@ export default function Edit_Promotion({ params }: PageProps) {
               onChange={(e) => setPromotionName(e.target.value)}
               id="promotionName"
               errorMessage="กรุณากรอกชื่อโปรโมชั่น"
+              className="font-DB_Med text-gray-500"
             />
           </div>
           <div className="form-control py-4">
-            <label htmlFor="promotionDiscount" className="label">
-              ส่วนลด (%)
+            <label htmlFor="promotionDiscount" className="label font-DB_Med">
+              ส่วนลด (฿)
             </label>
             <Input
               fullWidth
@@ -315,10 +316,11 @@ export default function Edit_Promotion({ params }: PageProps) {
               }
               id="promotionDiscount"
               errorMessage="กรุณากรอกส่วนลด"
+              className="font-DB_Med text-gray-500"
             />
           </div>
           <div className="form-control py-4">
-            <label htmlFor="promotionDetail" className="label">
+            <label htmlFor="promotionDetail" className="label font-DB_Med">
               รายละเอียดโปรโมชั่น
             </label>
             <Textarea
@@ -328,10 +330,11 @@ export default function Edit_Promotion({ params }: PageProps) {
               onChange={(e) => setPromotionDetail(e.target.value)}
               id="promotionDetail"
               errorMessage="กรุณากรอกรายละเอียดโปรโมชั่น"
+              className="font-DB_Med text-gray-500"
             />
           </div>
           <div className="form-control py-4">
-            <label className="label">ระยะเวลาของโปรโมชั่น</label>
+            <label className="label font-DB_Med">ระยะเวลาของโปรโมชั่น</label>
             {/* DatePickerWithRange Component */}
             <DatePickerWithRange
               className="my-2"
