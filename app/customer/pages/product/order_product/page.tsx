@@ -9,13 +9,15 @@ import { PostgrestError } from "@supabase/supabase-js";
 import { getUserID } from "@/app/auth/getUserID";
 import Swal from "sweetalert2";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet"; // Adjust the path if necessary
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
+
 import {
   Dialog,
   DialogContent,
@@ -1301,9 +1303,9 @@ export default function Order_Product() {
           </button>
 
           {isSheetOpen && (
-            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-              <SheetContent side={"bottom"} className="rounded-2xl px-4">
-                <SheetHeader>
+            <Drawer open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+              <DrawerContent className="rounded-2xl px-4">
+                <DrawerHeader>
                   {/* Add image at the top */}
                   <div className="w-[10rem] h-[10rem] bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <img
@@ -1312,14 +1314,14 @@ export default function Order_Product() {
                       className="w-[8.5rem] h-auto"
                     />
                   </div>
-                  <SheetTitle className="font-DB_v4 text-2xl text-gray-800">
+                  <DrawerTitle className="font-DB_v4 text-2xl text-gray-800">
                     ยืนยันการสั่งอาหาร
-                  </SheetTitle>
-                  <SheetDescription className="font-DB_v4 text-lg text-gray-800 mt-5">
+                  </DrawerTitle>
+                  <DrawerDescription className="font-DB_v4 text-lg text-gray-800 mt-5">
                     คุณแน่ใจหรือว่าต้องการสั่งอาหาร?
-                  </SheetDescription>
-                </SheetHeader>
-                <div className="flex justify-center mt-5 gap-5">
+                  </DrawerDescription>
+                </DrawerHeader>
+                <DrawerFooter className="flex justify-center mt-5 gap-5">
                   <button
                     className="bg-gray-300 text-black font-DB_Med text-lg py-2 px-10 rounded-xl"
                     onClick={() => setIsSheetOpen(false)} // Close without confirming
@@ -1332,9 +1334,9 @@ export default function Order_Product() {
                   >
                     ยืนยัน
                   </button>
-                </div>
-              </SheetContent>
-            </Sheet>
+                </DrawerFooter>
+              </DrawerContent>
+            </Drawer>
           )}
         </div>
       </footer>

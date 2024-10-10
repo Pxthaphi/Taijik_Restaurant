@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { login } from "./auth/login";
 import liff from "@line/liff";
 import Swal from "sweetalert2";
+import Cookies from "js-cookie";
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -24,6 +25,7 @@ export default function Home() {
         const { userAgent } = navigator;
         console.log(userAgent);
 
+        // Check if the user is within the Line client using LIFF
         if (!liff.isInClient()) {
           Swal.fire({
             icon: "error",
@@ -38,19 +40,32 @@ export default function Home() {
           }).then(() => {
             Swal.showLoading(Swal.getConfirmButton());
             const liffUrl = `https://line.me/R/app/${liffId}`;
-            window.location.href = liffUrl;
+            window.location.href = liffUrl; // Redirect user to Line app
           });
         } else {
+          // If in Line client, proceed with login and routing
           const userType = await login();
           if (userType === "admin") {
+            Cookies.set("userType", userType); // เก็บค่า userType ใน cookie
             router.push(`/admin`);
           } else {
+            Cookies.set("userType", userType); // เก็บค่า userType ใน cookie
             router.push(`/customer`);
           }
-          setLoading(false);
+          setLoading(false); // Stop loading once login is successful
         }
       } catch (error) {
-        console.error("LIFF initialization or profile retrieval failed:", error);
+        console.error(
+          "LIFF initialization or profile retrieval failed:",
+          error
+        );
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "Failed to initialize LIFF or retrieve profile.",
+          timer: 3000,
+          showConfirmButton: false,
+        });
       }
     };
     handleLogin();
