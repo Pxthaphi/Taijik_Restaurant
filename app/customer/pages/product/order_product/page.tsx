@@ -633,12 +633,12 @@ export default function Order_Product() {
       Swal.fire({
         icon: "success",
         title: "การสั่งซื้อสำเร็จ",
-        text: "คุณสั่งซื้อสินค้าเรียบร้อยแล้ว",
+        text: "คุณสั่งซื้อสินค้าเรียบร้อยแล้ว กรุณารอสักครู่...",
         showConfirmButton: false,
         timer: 2000,
       }).then(() => {
         setTimeout(() => {
-          router.push(`pages/product/order_product/${Order_ID}`);
+          router.push(`/product/order_product/${Order_ID}`);
         }, 5000); // Navigate after 2 seconds
       });
 
