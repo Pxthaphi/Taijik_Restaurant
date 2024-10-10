@@ -638,7 +638,7 @@ export default function Order_Product() {
         timer: 2000,
       }).then(() => {
         setTimeout(() => {
-          router.push(`/product/order_product/${Order_ID}`);
+          router.push(`/customer/pages/product/order_product/${Order_ID}`);
         }, 5000); // Navigate after 2 seconds
       });
 
