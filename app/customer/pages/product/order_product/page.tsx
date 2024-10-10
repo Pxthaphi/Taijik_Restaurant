@@ -639,7 +639,7 @@ export default function Order_Product() {
       }).then(() => {
         setTimeout(() => {
           router.push(`product/order_product/${Order_ID}`);
-        }, 3000); // Navigate after 2 seconds
+        }, 8000); // Navigate after 2 seconds
       });
 
       // Send Flex Message
