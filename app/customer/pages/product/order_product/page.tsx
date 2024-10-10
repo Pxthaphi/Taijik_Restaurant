@@ -905,7 +905,7 @@ export default function Order_Product() {
   };
 
   const sendOrderNotificationAdmin = async () => {
-    const userId = "U33932b62ec1d5fa045a5cb9c58da3b29";
+    const userId = process.env.NEXT_PUBLIC_ADMIN_ID;
 
     if (!userId) {
       console.error("User ID is not available");
