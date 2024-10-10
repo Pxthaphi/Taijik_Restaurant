@@ -544,7 +544,6 @@ export default function Order_Product() {
     });
 
     try {
-      const totalPrice = calculateTotalPrice();
       // Insert into orders table
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
@@ -573,17 +572,16 @@ export default function Order_Product() {
         Product_ID: product.Product_ID,
         Product_Qty: quantityMap[product.Product_ID] || 0,
         Product_Size: product.Product_Size || "",
-        Product_Meat: product.Product_Meat?.length
-          ? product.Product_Meat
-          : "{}", // Handle array properly
+        Product_Meat: product.Product_Meat?.length ? product.Product_Meat : [], // Pass as an array
         Product_Option: product.Product_Option?.length
           ? product.Product_Option
-          : "{}",
+          : [], // Pass as an array
         Product_Noodles: product.Product_Noodles?.length
           ? product.Product_Noodles
-          : "{}",
+          : [], // Pass as an array
         Product_Detail: product.Product_Detail || "",
-        Total_Price: totalPrice || 0,
+        Total_Price:
+          (product.Total_Price || 0) * (quantityMap[product.Product_ID] || 0),
       }));
 
       // Insert into order_products table
@@ -1238,11 +1236,19 @@ export default function Order_Product() {
               >
                 <div className="text-base text-gray-800 font-DB_Med">
                   {product.Product_Name}{" "}
-                  <span className="text-sm">({product.Meat_Name})</span>{" "}
+                  {product.Noodles_Name && (
+                    <span className="text-sm">{product.Noodles_Name}</span>
+                  )}{" "}
+                  {product.Meat_Name && (
+                    <span className="text-sm">{product.Meat_Name}</span>
+                  )}{" "}
                   {product.Option_Names && (
                     <span className="text-sm">
                       (เพิ่ม {product.Option_Names})
                     </span>
+                  )}{" "}
+                  {product.Product_Size && (
+                    <span className="text-sm">{product.Product_Size}</span>
                   )}{" "}
                   x {quantity}
                 </div>
