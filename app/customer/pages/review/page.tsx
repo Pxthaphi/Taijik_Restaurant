@@ -195,7 +195,10 @@ export default function Review() {
                 <h2 className="font-DB_Med text-2xl text-gray-700 ml-2">
                   ร้านอาหารใต้จิก
                 </h2>
-                <a href="tel:+66640091297" className="flex items-center justify-start bg-green-100 rounded-full mt-3 p-1 w-fit">
+                <a
+                  href="tel:+66800498858"
+                  className="flex items-center justify-start bg-green-100 rounded-full mt-3 p-1 w-fit"
+                >
                   <div className="flex items-center bg-green-600 rounded-full p-1">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -294,17 +297,23 @@ export default function Review() {
                   </div>
                   <div className="space-y-4 mt-4">
                     <div className="flex items-center">
-                      <span className="text-yellow-500 mr-[1rem]">⭐⭐⭐⭐⭐</span>
+                      <span className="text-yellow-500 mr-[1rem]">
+                        ⭐⭐⭐⭐⭐
+                      </span>
                       <Progress value={(267 / 297) * 100} color="success" />
                       <span className="ml-[0.9rem] font-DB_Med">267</span>
                     </div>
                     <div className="flex items-center">
-                      <span className="text-yellow-500 mr-[2.4rem]">⭐⭐⭐⭐</span>
+                      <span className="text-yellow-500 mr-[2.4rem]">
+                        ⭐⭐⭐⭐
+                      </span>
                       <Progress value={(11 / 297) * 100} color="success" />
                       <span className="ml-[1.3rem] font-DB_Med">11</span>
                     </div>
                     <div className="flex items-center">
-                      <span className="text-yellow-500 mr-[3.8rem]">⭐⭐⭐</span>
+                      <span className="text-yellow-500 mr-[3.8rem]">
+                        ⭐⭐⭐
+                      </span>
                       <Progress value={(5 / 297) * 100} color="success" />
                       <span className="ml-7 font-DB_Med">5</span>
                     </div>
@@ -429,9 +438,7 @@ export default function Review() {
                             </svg>
                           </div>
                           <p className="text-[15px] font-DB_Med text-green-600 ml-2 mr-2">
-                            <p className="font-DB_Med">
-                              {review.Product_Name}
-                            </p>
+                            <p className="font-DB_Med">{review.Product_Name}</p>
                           </p>
                         </div>
                       ) : (

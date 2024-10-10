@@ -380,7 +380,7 @@ export default function Order_Status({ params }: PageProps) {
               เลขคำสั่งซื้อ {params.slug}
             </p>
             <a
-              href="tel:+66640091297"
+              href="tel:+66800498858"
               className="flex items-center justify-start bg-green-100 rounded-full p-1 w-fit"
             >
               <div className="flex items-center bg-green-600 rounded-full p-1">
