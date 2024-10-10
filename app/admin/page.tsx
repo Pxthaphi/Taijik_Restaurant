@@ -5,17 +5,8 @@ import "../assets/css/embla.css";
 import Link from "next/link";
 import { GetProfile } from "../auth/GetProfile";
 import Loading from "../components/loading";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { Badge, Button } from "@nextui-org/react";
 import DialogDemo from "./pages/components/modal-dialog";
-import { Tektur } from "next/font/google";
 
 interface Profile {
   pictureUrl?: string;
@@ -226,18 +217,6 @@ export default function Customer() {
 
           {isModalOpen && <DialogDemo setIsModalOpen={setIsModalOpen} />}
 
-          <Sheet>
-            <SheetTrigger>Open</SheetTrigger>
-            <SheetContent side={"bottom"} className="rounded-t-2xl">
-              <SheetHeader>
-                <SheetTitle>Are you absolutely sure?</SheetTitle>
-                <SheetDescription>
-                  This action cannot be undone. This will permanently delete
-                  your account and remove your data from our servers.
-                </SheetDescription>
-              </SheetHeader>
-            </SheetContent>
-          </Sheet>
         </section>
       </main>
 

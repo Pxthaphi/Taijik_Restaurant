@@ -133,30 +133,33 @@ export default function Edit_Promotion({ params }: PageProps) {
       let imageUrl = preview; // Start with the existing image URL
 
       if (file) {
-        // If there's a new file, upload it
+
+        // Upload new image to Supabase storage
+
         const fileExtension = file.name.split(".").pop();
         const fileName = `${params.slug}.${fileExtension}`;
 
-        const { error: uploadError } = await supabase.storage
+        const { error } = await supabase.storage
           .from("Promotions")
           .update(fileName, file, {
             cacheControl: "3600",
             upsert: true,
           });
 
-        if (uploadError) {
-          throw uploadError;
+        if (error) {
+          throw error;
         }
 
+        // Get public URL of uploaded image
         const { data } = await supabase.storage
           .from("Promotions")
           .getPublicUrl(fileName);
 
         if (!data) {
-          throw new Error("Error getting public URL of the uploaded image");
+          throw new Error("Failed to get image URL from storage.");
         }
-
-        imageUrl = data.publicUrl; // Update imageUrl with the new image URL
+        imageUrl = data.publicUrl
+        console.log("image: ",imageUrl);
       }
 
       // Get current timestamp

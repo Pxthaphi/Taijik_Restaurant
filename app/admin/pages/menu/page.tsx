@@ -1,14 +1,60 @@
 "use client";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase"; // Adjust this import if needed
 import Food from "./components/food";
+
+// Define the ProductType interface
+interface ProductType {
+  Type_ID: number;
+  Type_Name: string;
+  Type_Icon: string;
+}
 
 export default function Menu() {
   const router = useRouter();
+  const [productTypes, setProductTypes] = useState<ProductType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch product types from Supabase
+  // Fetch product types from Supabase
+  const fetchProductTypes = async () => {
+    try {
+      const { data, error } = await supabase.from("product_type").select("*");
+
+      if (error) {
+        throw error;
+      }
+      setProductTypes(data as ProductType[]);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unknown error occurred");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProductTypes();
+  }, []);
 
   const goBack = () => {
-    router.push('../');
+    router.push("../");
   };
+
+  if (loading) {
+    return <p>Loading categories...</p>;
+  }
+
+  if (error) {
+    return <p>Error: {error}</p>;
+  }
+
   return (
     <>
       <header className="mx-8 mt-8 flex justify-center item-center">
@@ -33,7 +79,6 @@ export default function Menu() {
 
       <section>
         <div className="flex items-center justify-end mx-6 mt-7">
-          {/* <div className="font-DB_Med text-2xl animate-wiggle animate-duration-[1000ms] animate-infinite animate-ease-in-out">เมนูขายดี🔥</div> */}
           <Link
             href="menu/pages/AddProduct"
             className="inline-flex items-center bg-green-500 hover:bg-green-600 text-white text-sm font-DB_Med py-2 px-3 rounded-2xl "
@@ -74,8 +119,24 @@ export default function Menu() {
         </div>
       </section>
 
-      <section className="px-8 mt-8">
-        <Food/>
+      <section className="animate-fade-up animate-duration-[1000ms]">
+        {productTypes.length > 0 ? (
+          productTypes.map((type) => (
+            <div key={type.Type_ID} className="mb-10">
+              {/* Category Header */}
+              <div className="flex items-center justify-between mx-6 mt-7">
+                <div className="font-DB_Med text-xl">{type.Type_Name}</div>
+              </div>
+
+              {/* Product List */}
+              <div className="mx-6 mt-6 my-9">
+                <Food typeId={type.Type_ID} />
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="text-center">No categories available</p>
+        )}
       </section>
     </>
   );

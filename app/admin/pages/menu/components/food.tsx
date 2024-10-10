@@ -14,19 +14,23 @@ interface Product {
   Product_Status: number;
   Product_Update: string;
 }
-  
-export default function Food() {
+
+interface FoodProps {
+  typeId: number; // Accept typeId as a prop for filtering by category
+}
+
+export default function Food({ typeId }: FoodProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Function to fetch products from Supabase
+  // Function to fetch products from Supabase by typeId
   async function fetchProducts() {
     try {
-      // Fetch necessary columns including Product_Image
       const { data, error } = await supabase
         .from("products")
         .select("*")
+        .eq("Product_Type", typeId) // Filter by typeId
         .order("Product_ID");
 
       if (error) {
@@ -60,7 +64,7 @@ export default function Food() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase]); // Run once on component mount
+  }, [typeId]); // Fetch data whenever typeId changes
 
   if (loading) {
     return (
@@ -104,8 +108,8 @@ export default function Food() {
     </div>
   );
 }
-function ProductCard({ product }: { product: Product }) {
 
+function ProductCard({ product }: { product: Product }) {
   return (
     <div>
       <div className="bg-white border rounded-xl shadow-sm sm:flex">
