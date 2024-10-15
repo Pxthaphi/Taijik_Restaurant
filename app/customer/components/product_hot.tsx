@@ -3,7 +3,10 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { PostgrestError } from "@supabase/supabase-js";
 import Link from "next/link";
-import FireAnimation from "../components/assets/fire";
+import dynamic from 'next/dynamic';
+
+// Dynamically import the FireAnimation component with SSR disabled
+const FireAnimation = dynamic(() => import('./assets/fire'), { ssr: false });
 
 // Define the Product interface
 interface Product {
@@ -122,7 +125,7 @@ export default function Product_Hot() {
   }
 
   if (products.length === 0) {
-    return <p>No products available</p>;
+    return <p className="font-DB_v4">ขณะนี้ยังไม่มีเมนูอาหารขายดี</p>;
   }
 
   return (

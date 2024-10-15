@@ -30,6 +30,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import dayjs from "dayjs";
+import "dayjs/locale/th"; // Import ภาษาไทย
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import timezone from "dayjs/plugin/timezone";
@@ -40,6 +41,7 @@ dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 dayjs.extend(timezone);
 dayjs.extend(utc);
+dayjs.locale("th"); // ตั้งค่าภาษาไทย
 
 interface Time {
   ResTime_On: Time;
@@ -116,12 +118,11 @@ export default function Order_Product() {
   const [producttype, setProductType] = useState<ProductType[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [orderIDCounter, setOrderIDCounter] = useState<number>(1); // State for Order_ID counter
-  const promotionID = 1; // replace with actual logic to get
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedPromo, setSelectedPromo] = useState("");
-  const [promotions, setPromotions] = useState<Promotion[]>([]); // Type promotions state as an array of Promotion objects
+  const [selectedPromo, setSelectedPromo] = useState<number | null>(null);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [availableCoupons, setAvailableCoupons] = useState(0);
 
   const fetchRestaurantTimes = async () => {
@@ -184,14 +185,21 @@ export default function Order_Product() {
           Swal.fire({
             icon: "info",
             title: "ร้านปิดอยู่",
-            text: "ขณะนี้ร้านไม่ได้เปิดให้บริการ กรุณากลับมาสั่งใหม่ในช่วงเวลาร้านเปิดอีกครั้ง",
-            timer: 3000,
+            text: "ขณะนี้ร้านไม่ได้เปิดให้บริการ สามารถสั่งและไปรับหลังเวลาร้านเปิดได้ค่ะ",
+            timer: 4000,
             showConfirmButton: false,
-          }).then(() => {
-            setTimeout(() => {
-              router.push("../../");
-            }, 3000); // Navigate after 2 seconds
           });
+          // Swal.fire({
+          //   icon: "info",
+          //   title: "ร้านปิดอยู่",
+          //   text: "ขณะนี้ร้านไม่ได้เปิดให้บริการ กรุณากลับมาสั่งใหม่ในช่วงเวลาร้านเปิดอีกครั้ง",
+          //   timer: 3000,
+          //   showConfirmButton: false,
+          // }).then(() => {
+          //   setTimeout(() => {
+          //     router.push("../../");
+          //   }, 3000); // Navigate after 2 seconds
+          // });
         }
       }
     } catch (err) {
@@ -385,27 +393,82 @@ export default function Order_Product() {
     };
   }, [supabase]);
 
+  // ฟังก์ชันเพื่อแปลงปี ค.ศ. เป็น พ.ศ.
+  const convertToBuddhistEra = (date: string) => {
+    const dateObj = dayjs(date).tz("Asia/Bangkok");
+    const buddhistYear = dateObj.year() + 543; // เพิ่ม 543 ปี
+    return dateObj
+      .format(`DD MMM YYYY`)
+      .replace(`${dateObj.year()}`, `${buddhistYear}`); // แปลงรูปแบบปีเป็น พ.ศ.
+  };
+
+  // ฟังก์ชันเพื่อตรวจสอบว่าโปรโมชั่นหมดอายุแล้วหรือยัง
+  const isPromotionExpired = (promotionEndTime: string) => {
+    const currentTime = dayjs(); // เวลาปัจจุบัน
+    const endTime = dayjs(promotionEndTime).tz("Asia/Bangkok"); // เวลาหมดโปรโมชั่นใน timezone ไทย
+    return currentTime.isAfter(endTime); // ถ้าเวลาปัจจุบันเกินเวลาหมดโปรโมชั่น return true
+  };
+
+  // ฟังก์ชันเพื่อตรวจสอบว่าเหลือเวลา 1 วันหรือน้อยกว่า
+  const isLastDay = (promotionEndTime: string) => {
+    const currentTime = dayjs(); // เวลาปัจจุบัน
+    const endTime = dayjs(promotionEndTime).tz("Asia/Bangkok"); // เวลาหมดโปรโมชั่นใน timezone ไทย
+    return endTime.diff(currentTime, "day") < 1; // ถ้าเหลือเวลาน้อยกว่า 1 วัน return true
+  };
+
   useEffect(() => {
     const fetchPromotions = async () => {
-      const { data, error } = await supabase
-        .from("promotions")
-        .select(
-          "Promotion_ID, Promotion_Name, Promotion_Detail, Promotion_Discount, Promotion_Timestart, Promotion_Timestop, Promotion_Status, Promotion_Images"
+      try {
+        // Fetch all promotions first
+        const { data: allPromotions, error: promoError } = await supabase
+          .from("promotions")
+          .select(
+            "Promotion_ID, Promotion_Name, Promotion_Detail, Promotion_Discount, Promotion_Timestart, Promotion_Timestop, Promotion_Status, Promotion_Images"
+          );
+
+        if (promoError) {
+          throw promoError;
+        }
+
+        // Fetch the orders to check which promotions the current user has already used
+        const { data: usedPromotions, error: usedPromoError } = await supabase
+          .from("orders")
+          .select("Promotion_ID")
+          .eq("User_ID", getUserID()); // Use current User_ID to filter
+
+        if (usedPromoError) {
+          throw usedPromoError;
+        }
+
+        // Extract the Promotion_IDs that the user has already used
+        const usedPromotionIds = usedPromotions.map(
+          (order) => order.Promotion_ID
         );
 
-      if (error) {
+        // Filter promotions to only show the ones the user hasn't used
+        const availablePromotions = allPromotions.filter(
+          (promotion) => !usedPromotionIds.includes(promotion.Promotion_ID)
+        );
+
+        // Update the state to only show available promotions
+        setPromotions(availablePromotions);
+      } catch (error) {
         console.error("Error fetching promotions:", error);
-      } else {
-        setPromotions(data);
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "เกิดข้อผิดพลาดขณะดึงข้อมูลส่วนลด",
+        });
       }
     };
 
     fetchPromotions();
   }, []);
 
+  // ฟังก์ชันนี้เพื่อใช้ promotion_id แทน promotion_name ในการ insert ข้อมูล
   const applyPromotion = () => {
     const promo = promotions.find(
-      (promotion) => promotion.Promotion_Name === selectedPromo
+      (promotion) => promotion.Promotion_ID === selectedPromo // เปลี่ยนเป็นตรวจสอบจาก Promotion_ID
     );
     if (promo) {
       Swal.fire({
@@ -501,7 +564,7 @@ export default function Order_Product() {
 
     if (selectedPromo) {
       const promo = promotions.find(
-        (promotion) => promotion.Promotion_Name === selectedPromo
+        (promotion) => promotion.Promotion_ID === selectedPromo
       );
       if (promo) {
         totalPrice -= promo.Promotion_Discount;
@@ -515,7 +578,7 @@ export default function Order_Product() {
     // คำนวณส่วนลดจากโปรโมชั่นที่เลือก
     // ตัวอย่างการคำนวณ
     const selectedPromotion = promotions.find(
-      (promo) => promo.Promotion_Name === selectedPromo
+      (promo) => promo.Promotion_ID === selectedPromo
     );
     return selectedPromotion ? selectedPromotion.Promotion_Discount : 0;
   };
@@ -557,7 +620,7 @@ export default function Order_Product() {
             Receive_Time: selectedTimeDisplay,
             Order_Status: 1,
             Order_Detail: "",
-            Promotion_ID: selectedPromo ? parseInt(selectedPromo) : null,
+            Promotion_ID: selectedPromo, // ใช้ Promotion_ID แทน
             Order_Option: optionOrder,
           },
         ])
@@ -642,9 +705,13 @@ export default function Order_Product() {
         }, 5000); // Navigate after 2 seconds
       });
 
-      // Send Flex Message
-      await sendOrderNotification();
-      await sendOrderNotificationAdmin();
+      try {
+        // Send Flex Message
+        await sendOrderNotification();
+        await sendOrderNotificationAdmin();
+      } catch (err) {
+        console.error("Can't Send Notify", err);
+      }
     } catch (err) {
       console.error("Unexpected error:", err);
     }
@@ -660,14 +727,14 @@ export default function Order_Product() {
 
     // สร้างรายการอาหาร
     const orderItems = products.map((product) => {
-      const quantity = quantityMap[product.Product_ID] || 1; // ค่าเริ่มต้นเป็น 1 ถ้าจำนวนไม่ระบุ
+      const quantity = quantityMap[product.Product_ID] || 1;
       const meatText = product.Meat_Name ? ` (${product.Meat_Name})` : "";
       const optionsText = product.Option_Names
         ? ` (เพิ่ม ${product.Option_Names})`
         : "";
       const noodlesText = product.Noodles_Name
-        ? ` (เส้น: ${product.Noodles_Name.join(", ")})`
-        : ""; // Add noodles information
+        ? `(เส้น: ${product.Noodles_Name})`
+        : "";
 
       return {
         type: "box",
@@ -691,12 +758,8 @@ export default function Order_Product() {
     });
 
     // คำนวณส่วนลดและราคาสุทธิ
-    const discount = 0; // สมมุติส่วนลดเป็น 0
-    const totalPrice = products.reduce((sum, product) => {
-      const quantity = quantityMap[product.Product_ID] || 1;
-      return sum + product.Total_Price * quantity;
-    }, 0);
-    const finalPrice = totalPrice - discount;
+    const totalPrice = calculateTotalPrice(); // ใช้ฟังก์ชันที่คำนวณราคาหลังส่วนลด
+    const discount = calculateDiscount(); // คำนวณส่วนลด
 
     // Flex Message ข้อความ
     const message = [
@@ -842,7 +905,7 @@ export default function Order_Product() {
                       },
                       {
                         type: "text",
-                        text: `฿${finalPrice}`,
+                        text: `฿${totalPrice}`,
                         offsetEnd: "5px",
                         align: "end",
                         color: "#269117",
@@ -914,14 +977,14 @@ export default function Order_Product() {
 
     // สร้างรายการอาหาร
     const orderItems = products.map((product) => {
-      const quantity = quantityMap[product.Product_ID] || 1; // ค่าเริ่มต้นเป็น 1 ถ้าจำนวนไม่ระบุ
+      const quantity = quantityMap[product.Product_ID] || 1;
       const meatText = product.Meat_Name ? ` (${product.Meat_Name})` : "";
       const optionsText = product.Option_Names
         ? ` (เพิ่ม ${product.Option_Names})`
         : "";
       const noodlesText = product.Noodles_Name
-        ? ` (เส้น: ${product.Noodles_Name.join(", ")})`
-        : ""; // Add noodles information
+        ? `(เส้น: ${product.Noodles_Name})`
+        : "";
 
       return {
         type: "box",
@@ -945,12 +1008,8 @@ export default function Order_Product() {
     });
 
     // คำนวณส่วนลดและราคาสุทธิ
-    const discount = 0; // สมมุติส่วนลดเป็น 0
-    const totalPrice = products.reduce((sum, product) => {
-      const quantity = quantityMap[product.Product_ID] || 1;
-      return sum + product.Total_Price * quantity;
-    }, 0);
-    const finalPrice = totalPrice - discount;
+    const totalPrice = calculateTotalPrice(); // ใช้ฟังก์ชันที่คำนวณราคาหลังส่วนลด
+    const discount = calculateDiscount(); // คำนวณส่วนลด
 
     // Flex Message ข้อความ
     const message = [
@@ -1096,7 +1155,7 @@ export default function Order_Product() {
                       },
                       {
                         type: "text",
-                        text: `฿${finalPrice}`,
+                        text: `฿${totalPrice}`,
                         offsetEnd: "5px",
                         align: "end",
                         color: "#269117",
@@ -1368,7 +1427,11 @@ export default function Order_Product() {
                 >
                   {selectedPromo ? (
                     <span className="text-gray-800 font-DB_Med">
-                      {selectedPromo} {/* Display selected coupon name here */}
+                      {
+                        promotions.find(
+                          (promo) => promo.Promotion_ID === selectedPromo
+                        )?.Promotion_Name // Display the selected promotion's name
+                      }
                     </span>
                   ) : (
                     <span className="text-gray-500 font-DB_Med">ใช้คูปอง</span>
@@ -1422,48 +1485,68 @@ export default function Order_Product() {
 
               {/* Promotion options */}
               <div className="space-y-4">
-                {promotions.map((promo) => (
-                  <div
-                    key={promo.Promotion_ID}
-                    className={`p-2 border rounded-xl flex items-center justify-between ${
-                      selectedPromo === promo.Promotion_Name
-                        ? "border-green-500 bg-green-50"
-                        : "border-gray-200"
-                    } cursor-pointer`}
-                    onClick={() => setSelectedPromo(promo.Promotion_Name)}
-                  >
-                    <div>
-                      <p className="text-lg font-DB_Med">
-                        {promo.Promotion_Name}
-                      </p>
-                      <p className="text-sm font-DB_Med text-gray-500">
-                        รายละเอียด : {promo.Promotion_Detail}
-                      </p>
-                      <p className="text-sm font-DB_Med text-red-600">
-                        ส่วนลด: {promo.Promotion_Discount} บาท
-                      </p>
-                      <p className="text-sm font-DB_Med text-gray-400">
-                        หมดอายุวันที่ {promo.Promotion_Timestop}
-                      </p>
-                    </div>
-                    {selectedPromo === promo.Promotion_Name && (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth="1.5"
-                        stroke="currentColor"
-                        className="w-6 h-6 text-green-600"
+                {promotions
+                  .filter(
+                    (promo) => !isPromotionExpired(promo.Promotion_Timestop)
+                  ) // แสดงเฉพาะโปรโมชั่นที่ยังไม่หมดอายุ
+                  .map((promo) => {
+                    const promoEndDate = convertToBuddhistEra(
+                      promo.Promotion_Timestop
+                    ); // แปลงเป็น พ.ศ.
+                    const isEndingSoon = isLastDay(promo.Promotion_Timestop); // ตรวจสอบว่าเหลือเวลา 1 วันหรือน้อยกว่า
+
+                    return (
+                      <div
+                        key={promo.Promotion_ID}
+                        className={`p-2 border rounded-xl flex items-center justify-between ${
+                          selectedPromo === promo.Promotion_ID
+                            ? "border-green-500 bg-green-50"
+                            : "border-gray-200"
+                        } cursor-pointer`}
+                        onClick={() =>
+                          selectedPromo === promo.Promotion_ID
+                            ? setSelectedPromo(null)
+                            : setSelectedPromo(promo.Promotion_ID)
+                        }
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    )}
-                  </div>
-                ))}
+                        <div>
+                          <p className="text-lg font-DB_Med">
+                            {promo.Promotion_Name}
+                          </p>
+                          <p className="text-sm font-DB_Med text-gray-500">
+                            รายละเอียด : {promo.Promotion_Detail}
+                          </p>
+                          <p className="text-sm font-DB_Med text-red-600">
+                            ส่วนลด: {promo.Promotion_Discount} บาท
+                          </p>
+                          <p
+                            className={`text-sm font-DB_Med ${
+                              isEndingSoon ? "text-red-600" : "text-gray-400"
+                            }`}
+                          >
+                            หมดอายุวันที่ {promoEndDate}{" "}
+                            {/* แสดงวันที่หมดอายุ */}
+                          </p>
+                        </div>
+                        {selectedPromo === promo.Promotion_ID && (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth="1.5"
+                            stroke="currentColor"
+                            className="w-6 h-6 text-green-600"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
 
               {/* Modal footer */}

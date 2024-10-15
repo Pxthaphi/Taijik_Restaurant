@@ -118,7 +118,7 @@ export default function Customer() {
     <>
       <header className="flex justify-center items-center">
         <div className="max-w-md w-full shadow-md rounded-b-3xl overflow-hidden gradient-background">
-          <div className="p-4 mt-5 mx-2">
+          <div className="p-4 mt-5 mx-2 mb-2">
             {profile.pictureUrl && (
               <div className="flex items-center mb-4">
                 <img
@@ -169,32 +169,6 @@ export default function Customer() {
                 </div>
               </div>
             )}
-
-            <div>
-              <div className="relative pt-1">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="w-6 h-6"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-                    />
-                  </svg>
-                </span>
-                <input
-                  type="text"
-                  placeholder="ค้นหาเมนูที่คุณชอบ..."
-                  className="pl-10 w-full pr-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-            </div>
           </div>
         </div>
       </header>

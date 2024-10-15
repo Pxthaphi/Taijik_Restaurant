@@ -48,6 +48,8 @@ export default function Order_Status({ params }: PageProps) {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false); // Add a new state for tracking submission
+  const [discount, setDiscount] = useState(0); // New state for discount
+  const [totalPrice, setTotalPrice] = useState(0);
 
   let Status_text = "";
   let Status_detail = "";
@@ -83,10 +85,23 @@ export default function Order_Status({ params }: PageProps) {
     const fetchOrderDetails = async () => {
       setLoading(true);
 
-      // Fetch order details including status
+      // Fetch all promotions
+      const { data: allPromotions, error: promoError } = await supabase
+        .from("promotions")
+        .select(
+          "Promotion_ID, Promotion_Name, Promotion_Detail, Promotion_Discount, Promotion_Timestart, Promotion_Timestop, Promotion_Status"
+        );
+
+      if (promoError) {
+        console.error("Error fetching promotions:", promoError);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch order details including status and promotion ID
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
-        .select("Order_Status")
+        .select("Order_Status, Promotion_ID")
         .eq("Order_ID", params.slug)
         .single();
 
@@ -97,6 +112,11 @@ export default function Order_Status({ params }: PageProps) {
       }
 
       setStatusOrder(orderData.Order_Status);
+
+      // Find matching promotion
+      const promotionForOrder = allPromotions.find(
+        (promo) => promo.Promotion_ID === orderData.Promotion_ID
+      );
 
       // Fetch order products details
       const { data: orderProductsData, error: orderProductsError } =
@@ -112,15 +132,6 @@ export default function Order_Status({ params }: PageProps) {
       }
 
       const productIds = orderProductsData.map((product) => product.Product_ID);
-      const meatIds = orderProductsData.flatMap(
-        (product) => product.Product_Meat || []
-      );
-      const optionIds = orderProductsData.flatMap(
-        (product) => product.Product_Option || []
-      ); // flatten option IDs array
-      const noodleIDs = orderProductsData.flatMap(
-        (product) => product.Product_Noodles || []
-      );
 
       // Fetch product names
       const { data: productsData, error: productsError } = await supabase
@@ -134,76 +145,46 @@ export default function Order_Status({ params }: PageProps) {
         return;
       }
 
-      // Fetch meat names
-      const { data: meatData, error: meatError } = await supabase
-        .from("product_meat")
-        .select("*")
-        .in("Meat_ID", meatIds);
-
-      if (meatError) {
-        console.error(meatError);
-        setLoading(false);
-        return;
-      }
-
-      // Fetch option names
-      const { data: optionData, error: optionError } = await supabase
-        .from("product_option")
-        .select("*")
-        .in("Option_ID", optionIds);
-
-      if (optionError) {
-        console.error(optionError);
-        setLoading(false);
-        return;
-      }
-
-      // Fetch option names
-      const { data: noodlesData, error: noodlesError } = await supabase
-        .from("noodles_type")
-        .select("*")
-        .in("Noodles_ID", noodleIDs);
-
-      if (noodlesError) {
-        console.error(noodlesError);
-        setLoading(false);
-        return;
-      }
-
       // Map product names and details to order products
       const enhancedOrderProducts = orderProductsData.map((product) => {
         const productInfo = productsData.find(
           (p) => p.Product_ID === product.Product_ID
         );
 
-        // ปรับให้ `Product_Meat` เป็น array
-        const meats = product.Product_Meat.map((meatId: number) => {
-          const meat = meatData.find((m) => m.Meat_ID === meatId);
-          return meat ? meat.Meat_Name : "Unknown Meat";
-        });
-
-        const options = product.Product_Option.map((optionId: number) => {
-          const option = optionData.find((o) => o.Option_ID === optionId);
-          return option ? option.Option_Name : "Unknown Option";
-        });
-
-        const noodles = product.Product_Noodles.map((noodlesId: number) => {
-          const noodle = noodlesData.find((n) => n.Noodles_ID === noodlesId);
-          return noodle ? noodle.Noodles_Name : "Unknown Option";
-        });
-
         return {
           ...product,
           Product_Name: productInfo
             ? productInfo.Product_Name
             : "Unknown Product",
-          Meat_Name: meats.join(", "), // รวมชื่อเนื้อที่พบเป็น comma-separated string
-          Option_Name: options.join(", "), // รวมตัวเลือกที่พบเป็น comma-separated string
-          Noodles_Name: noodles.join(", "), // รวมตัวเลือกที่พบเป็น comma-separated string
         };
       });
 
       setOrderProducts(enhancedOrderProducts);
+
+      // Calculate the total price
+      const calculatedTotalPrice = orderProductsData.reduce(
+        (acc, product) => acc + product.Total_Price,
+        0
+      );
+
+      setTotalPrice(calculatedTotalPrice);
+
+      // Calculate discount
+      let appliedDiscount = 0;
+      if (
+        promotionForOrder &&
+        promotionForOrder.Promotion_Status === 1
+      ) {
+        const now = new Date();
+        const start = new Date(promotionForOrder.Promotion_Timestart);
+        const stop = new Date(promotionForOrder.Promotion_Timestop);
+
+        if (now >= start && now <= stop) {
+          appliedDiscount = promotionForOrder.Promotion_Discount;
+        }
+      }
+
+      setDiscount(appliedDiscount);
       setLoading(false);
     };
 
@@ -244,11 +225,11 @@ export default function Order_Status({ params }: PageProps) {
     setIsModalOpen(true);
   };
 
-  // Calculate total price
-  const totalPrice = orderProducts.reduce(
-    (acc, product) => acc + product.Total_Price,
-    0
-  );
+  // // Calculate total price
+  // const totalPrice = orderProducts.reduce(
+  //   (acc, product) => acc + product.Total_Price,
+  //   0
+  // );
 
   if (statusOrder == 1) {
     Status_text = "รอการยืนยันคำสั่งซื้อจากทางร้าน";
@@ -449,14 +430,16 @@ export default function Order_Status({ params }: PageProps) {
         <section className="mx-6 mt-5">
           <div className="flex justify-between mt-5 my-5">
             <div className="text-xl text-gray-800 font-DB_Med">ส่วนลด</div>
-            <div className="text-xl text-red-600 font-DB_Med">฿0</div>
+            <div className="text-xl text-red-600 font-DB_Med">
+              ฿{(discount)}
+            </div>
           </div>
           <div className="flex justify-between mt-3">
             <div className="text-xl text-gray-800 font-DB_Med">
               ราคารวมสุทธิ
             </div>
             <div className="text-xl text-green-600 font-DB_Med">
-              ฿{totalPrice}
+              ฿{(totalPrice - discount)}
             </div>
           </div>
         </section>
