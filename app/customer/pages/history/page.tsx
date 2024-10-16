@@ -10,6 +10,7 @@ interface FetchedOrder {
   Order_ID: string;
   Order_Datetime: string;
   Order_Status: number;
+  Promotion_ID: number | null; // Add this field, assuming it's a number or can be null
 }
 
 interface ProductDetail {
@@ -25,6 +26,8 @@ interface ProductDetail {
 
 interface Order extends FetchedOrder {
   products: ProductDetail[];
+  totalPrice: number; // Already exists or calculated
+  finalPrice: number; // Add this field for final price after discount
 }
 
 export default function HistoryOrder() {
@@ -65,7 +68,7 @@ export default function HistoryOrder() {
 
       let ordersQuery = supabase
         .from("orders")
-        .select("Order_ID, Order_Datetime, Order_Status")
+        .select("Order_ID, Order_Datetime, Order_Status, Promotion_ID") // Add Promotion_ID here
         .eq("User_ID", userID);
 
       if (Array.isArray(statusValues)) {
@@ -88,6 +91,9 @@ export default function HistoryOrder() {
       }
 
       const orderIds = orders.map((order: FetchedOrder) => order.Order_ID);
+      const promotionIds = orders
+        .map((order: FetchedOrder) => order.Promotion_ID)
+        .filter((id) => id !== null); // Filter out null Promotion_IDs
 
       const [
         { data: orderProducts, error: orderProductsError },
@@ -95,12 +101,20 @@ export default function HistoryOrder() {
         { data: productMeats, error: productMeatsError },
         { data: productOptions, error: productOptionsError },
         { data: noodlesData, error: noodlesError },
+        { data: promotions, error: promotionsError }, // Fetch promotions data
       ] = await Promise.all([
         supabase.from("order_products").select("*").in("Order_ID", orderIds),
         supabase.from("products").select("*"),
         supabase.from("product_meat").select("*"),
         supabase.from("product_option").select("*"),
         supabase.from("noodles_type").select("*"),
+        // Only query promotions if promotionIds is not empty
+        promotionIds.length > 0
+          ? supabase
+              .from("promotions")
+              .select("*")
+              .in("Promotion_ID", promotionIds)
+          : { data: [], error: null }, // If no promotions, return empty array
       ]);
 
       if (orderProductsError) throw orderProductsError;
@@ -108,19 +122,25 @@ export default function HistoryOrder() {
       if (productMeatsError) throw productMeatsError;
       if (productOptionsError) throw productOptionsError;
       if (noodlesError) throw noodlesError;
+      if (promotionsError) throw promotionsError;
 
-      // Now map through the orders and enrich the data with product details
       const enrichedOrders = orders.map((order: FetchedOrder) => {
         const orderProductsForOrder = orderProducts.filter(
           (op: any) => op.Order_ID === order.Order_ID
         );
+
+        // Check if Order_Promotion is null, and handle it
+        const promotion = order.Promotion_ID
+          ? promotions.find(
+              (promo: any) => promo.Promotion_ID === order.Promotion_ID
+            )
+          : null;
 
         const productsWithDetails = orderProductsForOrder.map((op: any) => {
           const product = products.find(
             (p: any) => p.Product_ID === op.Product_ID
           );
 
-          // Handle multiple meats
           const meatNames = Array.isArray(op.Product_Meat)
             ? op.Product_Meat.map((meatID: any) => {
                 const meat = productMeats.find(
@@ -128,12 +148,8 @@ export default function HistoryOrder() {
                 );
                 return meat ? meat.Meat_Name : "No meat";
               }).join(", ")
-            : [
-                productMeats.find((m: any) => m.Meat_ID === op.Product_Meat)
-                  ?.Meat_Name || "No meat",
-              ].join(", ");
+            : "No meat";
 
-          // Handle product options
           const optionNames = Array.isArray(op.Product_Option)
             ? op.Product_Option.map((optionID: bigint) => {
                 const option = productOptions.find(
@@ -143,7 +159,6 @@ export default function HistoryOrder() {
               }).join(", ")
             : "No options";
 
-          // Handle noodles
           const noodleNames = Array.isArray(op.Product_Noodles)
             ? op.Product_Noodles.map((noodleID: bigint) => {
                 const noodle = noodlesData.find(
@@ -160,14 +175,26 @@ export default function HistoryOrder() {
             Product_Size: op.Product_Size || "N/A",
             Meat_Name: meatNames,
             Option_Names: optionNames,
-            Noodle_Names: noodleNames, // Add noodle names
+            Noodle_Names: noodleNames,
             Total_Price: op.Total_Price,
           };
         });
 
+        const totalPrice = productsWithDetails.reduce(
+          (total, product) => total + product.Total_Price,
+          0
+        );
+
+        // Apply discount if promotion exists, otherwise discount is 0
+        const discount = promotion ? promotion.Discount || 0 : 0;
+        const finalPrice = totalPrice - discount;
+
         return {
           ...order,
           products: productsWithDetails,
+          totalPrice,
+          finalPrice, // Use finalPrice here for displaying the correct price
+          promotion, // Include promotion data if needed
         };
       });
 
@@ -388,6 +415,40 @@ function OrderStatus({
   textColor: string;
   orders: Order[];
 }) {
+  // Function to format datetime in Thai locale without adding 543 to the year
+  const formatDateTimeThai = (datetime: string) => {
+    const [datePart, timePart] = datetime.split(" ");
+    const [day, month, year] = datePart.split("/");
+
+    const monthsInThai = [
+      "มกราคม",
+      "กุมภาพันธ์",
+      "มีนาคม",
+      "เมษายน",
+      "พฤษภาคม",
+      "มิถุนายน",
+      "กรกฎาคม",
+      "สิงหาคม",
+      "กันยายน",
+      "ตุลาคม",
+      "พฤศจิกายน",
+      "ธันวาคม",
+    ];
+
+    const formattedDate = `${parseInt(day)} ${
+      monthsInThai[parseInt(month) - 1]
+    } ${year}`;
+
+    const formattedTime = new Date(`1970-01-01T${timePart}`).toLocaleTimeString(
+      "th-TH",
+      {
+        hour: "2-digit",
+        minute: "2-digit",
+      }
+    );
+
+    return `${formattedDate} ${formattedTime} น.`;
+  };
   return (
     <div>
       {orders.map((order) => (
@@ -465,15 +526,13 @@ function OrderStatus({
                 </div>
 
                 <p className="font-DB_v4 text-sm">
-                  เวลาที่สั่ง : {order.Order_Datetime} น.
+                  เวลาที่สั่ง : {formatDateTimeThai(order.Order_Datetime)}
                 </p>
               </div>
             </div>
             <div className="text-green-500 text-xl font-DB_Med">
-              ฿
-              {order.products
-                .reduce((total, product) => total + product.Total_Price, 0)
-                .toFixed(2)}
+              ฿{order.finalPrice.toFixed(2)}{" "}
+              {/* Use finalPrice instead of calculating from products */}
             </div>
           </div>
         </Link>

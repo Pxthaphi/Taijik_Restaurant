@@ -1,15 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Tabs, Tab } from "@nextui-org/react";
-import { supabase } from "@/lib/supabase";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
+// Define interfaces for orders and product details
 interface FetchedOrder {
   Order_ID: string;
   Order_Datetime: string;
   Order_Status: number;
-  Promotion_ID: number | null; // Add this field to fetch promotion
+  Promotion_ID: number | null;
 }
 
 interface ProductDetail {
@@ -17,47 +16,40 @@ interface ProductDetail {
   Product_Name: string;
   Product_Qty: number;
   Product_Size: string;
-  Meat_Name: string[];
-  Option_Names: string[];
-  Noodle_Names: string[];
+  Meat_Name: string;
+  Option_Names: string;
+  Noodle_Names: string;
   Total_Price: number;
 }
 
 interface Order extends FetchedOrder {
   products: ProductDetail[];
-  totalPrice: number; // Add this field for the total price
-  finalPrice: number; // Add this field for the final price after discount
-  promotionDiscount: number; // Discount amount from promotion
+  totalPrice: number;
+  finalPrice: number;
+  promotionDiscount: number;
 }
 
-export default function List_Order() {
-  const router = useRouter();
-  const [state, setState] = useState({
-    selected: "pending",
-    color: "primary" as "primary" | "warning" | "success" | "danger",
-    textColor: "",
-    orders: [] as Order[],
-    loading: true,
-    error: null as string | null,
-    orderStatus: 1,
-  });
+interface OrderComponentProps {
+  status: string;
+}
 
-  const handleTabChange = (key: any) => {
-    setState((prevState) => ({ ...prevState, selected: key }));
-  };
+const OrderComponent = ({ status }: OrderComponentProps) => {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const getStatus = (tab: string) => {
-    switch (tab) {
+  const getStatus = (status: string): number | number[] => {
+    switch (status) {
       case "pending":
         return 1;
-      case "processing":
-        return 2;
+      case "in_progress":
+        return [2, 3];
       case "completed":
-        return [3, 4];
+        return 4;
       case "cancelled":
         return 5;
       default:
-        return 1;
+        return [];
     }
   };
 
@@ -79,12 +71,8 @@ export default function List_Order() {
       if (ordersError) throw ordersError;
 
       if (!orders || orders.length === 0) {
-        setState((prevState) => ({
-          ...prevState,
-          orders: [],
-          orderStatus: 0,
-          loading: false,
-        }));
+        setOrders([]);
+        setLoading(false);
         return;
       }
 
@@ -121,13 +109,11 @@ export default function List_Order() {
       if (noodlesError) throw noodlesError;
       if (promotionsError) throw promotionsError;
 
-      // Now map through the orders and enrich the data with product details and promotions
       const enrichedOrders = orders.map((order: FetchedOrder) => {
         const orderProductsForOrder = orderProducts.filter(
           (op: any) => op.Order_ID === order.Order_ID
         );
 
-        // Fetch corresponding promotion for this order
         const promotion = promotions.find(
           (promo: any) => promo.Promotion_ID === order.Promotion_ID
         );
@@ -147,10 +133,7 @@ export default function List_Order() {
                 );
                 return meat ? meat.Meat_Name : "No meat";
               }).join(", ")
-            : [
-                productMeats.find((m: any) => m.Meat_ID === op.Product_Meat)
-                  ?.Meat_Name || "No meat",
-              ].join(", ");
+            : "No meat";
 
           const optionNames = Array.isArray(op.Product_Option)
             ? op.Product_Option.map((optionID: bigint) => {
@@ -193,226 +176,24 @@ export default function List_Order() {
           ...order,
           products: productsWithDetails,
           totalPrice,
-          finalPrice, // Use finalPrice after applying discount
-          promotionDiscount, // Add promotion discount for reference
+          finalPrice,
+          promotionDiscount,
         };
       });
 
-      setState((prevState) => ({
-        ...prevState,
-        orders: enrichedOrders,
-        orderStatus: enrichedOrders[0]?.Order_Status || 0,
-        loading: false,
-      }));
+      setOrders(enrichedOrders);
+      setLoading(false);
     } catch (error) {
       console.error(error);
-      setState((prevState) => ({
-        ...prevState,
-        error: "Failed to fetch orders",
-        loading: false,
-      }));
+      setError("Failed to fetch orders");
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    setState((prevState) => ({ ...prevState, loading: true, error: null }));
+    fetchOrders(status);
+  }, [status]);
 
-    fetchOrders(state.selected);
-
-    switch (state.selected) {
-      case "pending":
-        setState((prevState) => ({
-          ...prevState,
-          color: "primary",
-          textColor: "text-sky-500",
-        }));
-        break;
-      case "processing":
-        setState((prevState) => ({
-          ...prevState,
-          color: "warning",
-          textColor: "text-orange-500",
-        }));
-        break;
-      case "completed":
-        setState((prevState) => ({
-          ...prevState,
-          color: "success",
-          textColor: "text-green-500",
-        }));
-        break;
-      case "cancelled":
-        setState((prevState) => ({
-          ...prevState,
-          color: "danger",
-          textColor: "text-red-500",
-        }));
-        break;
-      default:
-        setState((prevState) => ({
-          ...prevState,
-          color: "primary",
-          textColor: "text-sky-500",
-        }));
-    }
-  }, [state.selected]);
-
-  useEffect(() => {
-    fetchOrders(state.selected);
-
-    const channel = supabase
-      .channel("realtime-orders")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "orders" },
-        (payload) => {
-          console.log("Change received!", payload);
-          fetchOrders(state.selected);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [supabase]);
-
-  const navigateBack = () => {
-    router.back();
-  };
-
-  return (
-    <>
-      <header className="mx-8 mt-8 flex justify-center items-center">
-        <div
-          onClick={navigateBack}
-          className="absolute py-1 px-1 top-8 left-8 cursor-pointer"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={1.5}
-            stroke="currentColor"
-            className="w-7 h-7"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
-            />
-          </svg>
-        </div>
-        <div className="font-DB_Med text-2xl pt-0.5">รายการคำสั่งซื้อ</div>
-      </header>
-      <section className="mx-4 mt-8">
-        <Tabs
-          variant="underlined"
-          className="me-8 flex justify-between font-DB_Med"
-          selectedKey={state.selected}
-          onSelectionChange={handleTabChange}
-          fullWidth
-          color={state.color}
-        >
-          <Tab
-            key="pending"
-            title="รอยืนยัน"
-            className="flex-1 text-center text-lg"
-          />
-          <Tab
-            key="processing"
-            title="กำลังดำเนินการ"
-            className="flex-1 text-center text-lg"
-          />
-          <Tab
-            key="completed"
-            title="เสร็จสิ้น"
-            className="flex-1 text-center text-lg"
-          />
-          <Tab
-            key="cancelled"
-            title="ยกเลิกคำสั่งซื้อ"
-            className="flex-1 text-center text-lg"
-          />
-        </Tabs>
-        {state.loading && (
-          <p className="mx-4 mt-8 flex flex-col items-center justify-center h-[36rem]">
-            กำลังโหลด...
-          </p>
-        )}
-        {state.error && (
-          <p className="mx-4 mt-8 flex flex-col items-center justify-center h-[36rem]">
-            {state.error}
-          </p>
-        )}
-        {!state.loading && !state.error && state.orders.length === 0 && (
-          <div className="mx-4 mt-8 flex flex-col items-center justify-center h-[32rem]">
-            <img
-              src="https://fsdtjdvawodatbcuizsw.supabase.co/storage/v1/object/public/Promotions/component/preparing_order.png"
-              alt="No orders"
-              className="h-[10rem] animate-wiggle animate-infinite animate-duration-[1200ms] animate-ease-in-out"
-            />
-            <p className="mt-5 text-lg font-DB_v4 text-center">
-              ไม่มีคำสั่งซื้อในขณะนี้{" "}
-            </p>
-          </div>
-        )}
-        <section className="mt-8">
-          {!state.loading && !state.error && state.orders.length > 0 && (
-            <div className="">
-              {state.selected === "pending" && (
-                <OrderStatus
-                  status="รอการยืนยันออเดอร์"
-                  textColor={state.textColor}
-                  orders={state.orders}
-                />
-              )}
-              {state.selected === "processing" && (
-                <OrderStatus
-                  status="กำลังดำเนินการ"
-                  textColor={state.textColor}
-                  orders={state.orders}
-                />
-              )}
-              {state.selected === "completed" && (
-                <OrderStatus
-                  status={
-                    state.orderStatus === 3
-                      ? "เตรียมเมนูอาหารเสร็จสิ้น"
-                      : state.orderStatus === 4
-                      ? "คำสั่งซื้อเสร็จสิ้น"
-                      : ""
-                  }
-                  textColor={state.textColor}
-                  orders={state.orders}
-                />
-              )}
-
-              {state.selected === "cancelled" && (
-                <OrderStatus
-                  status="ยกเลิกคำสั่งซื้อ"
-                  textColor={state.textColor}
-                  orders={state.orders}
-                />
-              )}
-            </div>
-          )}
-        </section>
-      </section>
-    </>
-  );
-}
-
-function OrderStatus({
-  status,
-  textColor,
-  orders,
-}: {
-  status: string;
-  textColor: string;
-  orders: Order[];
-}) {
-  // Function to format datetime in Thai locale without adding 543 to the year
   const formatDateTimeThai = (datetime: string) => {
     const [datePart, timePart] = datetime.split(" ");
     const [day, month, year] = datePart.split("/");
@@ -446,8 +227,12 @@ function OrderStatus({
 
     return `${formattedDate} ${formattedTime} น.`;
   };
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>{error}</div>;
+
   return (
-    <div>
+    <div className="pt-3">
       {orders.map((order) => (
         <Link
           key={order.Order_ID}
@@ -504,24 +289,39 @@ function OrderStatus({
                 </svg>
               </div>
               <div>
-                <div className={`text-md font-DB_Med ${textColor}`}>
-                  {status} | {order.Order_ID}
+                <div
+                  className={`text-md font-DB_Med ${
+                    status === "pending"
+                      ? "text-sky-600"
+                      : status === "in_progress"
+                      ? "text-orange-600"
+                      : status === "completed"
+                      ? "text-green-600"
+                      : status === "cancelled"
+                      ? "text-red-500"
+                      : ""
+                  }`}
+                >
+                  {status === "pending" && "รอดำเนินการ"}
+                  {status === "in_progress" && "กำลังดำเนินการ"}
+                  {status === "completed" && "คำสั่งซื้อเสร็จสิ้น"}
+                  {status === "cancelled" && "ยกเลิกคำสั่งซื้อ"} |{" "}
+                  {order.Order_ID}
                 </div>
+
                 <div className="text-gray-600 font-DB_v4">
-                  {order.products.map((product, index) => (
+                  {order.products.map((product) => (
                     <div key={product.Product_ID} className="mb-1 text-sm">
                       {product.Product_Name}
-                      {product.Meat_Name && ` (${product.Meat_Name})`} x{" "}
-                      {product.Product_Qty} <br />
+                      {product.Meat_Name && ` (${product.Meat_Name})`} <br />
                       (ขนาด {product.Product_Size}
                       {product.Noodle_Names && `, เส้น ${product.Noodle_Names}`}
                       {product.Option_Names &&
                         `, เพิ่ม ${product.Option_Names}`}
-                      ){index < order.products.length - 1 && ", "}
+                      ) x {product.Product_Qty}
                     </div>
                   ))}
                 </div>
-
                 <p className="font-DB_v4 text-sm">
                   เวลาที่สั่ง : {formatDateTimeThai(order.Order_Datetime)}
                 </p>
@@ -535,4 +335,6 @@ function OrderStatus({
       ))}
     </div>
   );
-}
+};
+
+export default OrderComponent;

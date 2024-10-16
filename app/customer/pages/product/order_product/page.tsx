@@ -735,6 +735,7 @@ export default function Order_Product() {
       const noodlesText = product.Noodles_Name
         ? `(เส้น: ${product.Noodles_Name})`
         : "";
+      const size = product.Product_Size;
 
       return {
         type: "box",
@@ -742,7 +743,7 @@ export default function Order_Product() {
         contents: [
           {
             type: "text",
-            text: `${product.Product_Name} ${meatText} ${optionsText} ${noodlesText} x ${quantity}`,
+            text: `${product.Product_Name}${noodlesText} ${meatText} ${size} ${optionsText} x ${quantity}`,
             flex: 0,
             size: "sm",
           },
@@ -1565,45 +1566,26 @@ export default function Order_Product() {
 
         <section className="mx-8 mt-5">
           <div className="text-xl text-gray-800 font-DB_Med mt-4">ราคารวม</div>
-          {products.map((product) => {
-            const quantity = quantityMap[product.Product_ID] || 0;
-            const productTotalPrice = product.Total_Price * quantity;
-
-            return (
-              <div
-                key={product.Product_ID}
-                className="flex justify-between mt-3"
-              >
-                <div className="text-base text-gray-800 font-DB_Med">
-                  {product.Product_Name}{" "}
-                  {product.Noodles_Name && (
-                    <span className="text-sm">{product.Noodles_Name}</span>
-                  )}{" "}
-                  {product.Meat_Name && (
-                    <span className="text-sm">{product.Meat_Name}</span>
-                  )}{" "}
-                  {product.Option_Names && (
-                    <span className="text-sm">
-                      (เพิ่ม {product.Option_Names})
-                    </span>
-                  )}{" "}
-                  {product.Product_Size && (
-                    <span className="text-sm">{product.Product_Size}</span>
-                  )}{" "}
-                  x {quantity}
-                </div>
-                <div className="text-base text-gray-800 font-DB_Med">
-                  ฿{productTotalPrice}.00
-                </div>
+          {products.map((product) => (
+            <div key={product.Product_ID} className="flex justify-between mt-3">
+              <div className="text-base text-gray-800 font-DB_Med flex flex-wrap items-center space-x-2">
+                {product.Product_Name}{" "}
+                {product.Noodles_Name.length > 0 && product.Noodles_Name}{" "}
+                {product.Meat_Name.length > 0 && product.Meat_Name}
+                {product.Option_Names.length > 0 && product.Option_Names} x{" "}
+                {quantityMap[product.Product_ID]}
               </div>
-            );
-          })}
-
+              <div className="text-base text-gray-800 font-DB_Med">
+                ฿{product.Total_Price * (quantityMap[product.Product_ID] || 0)}
+                .00
+              </div>
+            </div>
+          ))}
           <div className="flex justify-between mt-3">
             <div className="text-base text-gray-800 font-DB_Med">ส่วนลด</div>
             <div className="text-base text-red-600 font-DB_Med">
               -฿{calculateDiscount()}.00
-            </div>
+            </div>{" "}
           </div>
 
           <hr className="h-px my-2 bg-gray-100 border-0 mt-3 pt-1 rounded-full" />

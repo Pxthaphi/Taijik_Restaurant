@@ -29,9 +29,9 @@ interface OrderProduct {
   Product_Name: string;
   Product_Qty: number;
   Product_Size: string;
-  Product_Meat: number;
-  Product_Option: number;
-  Product_Noodles: number;
+  Product_Meat: number[];
+  Product_Option: number[];
+  Product_Noodles: number[];
   Product_Detail: string;
   Total_Price: number;
   Meat_Name?: string;

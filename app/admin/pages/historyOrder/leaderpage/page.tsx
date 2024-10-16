@@ -8,7 +8,7 @@ import { PostgrestError } from "@supabase/supabase-js";
 import dynamic from "next/dynamic";
 
 // Dynamically import the FireAnimation component with SSR disabled
-const FireAnimation = dynamic(() => import("../../components/assets/fire"), {
+const FireAnimation = dynamic(() => import("./assets/fire"), {
   ssr: false,
 });
 
@@ -20,7 +20,7 @@ interface Product {
   Product_Price: number;
   Product_Image: string; // Added Product_Image field
   Product_Status: number;
-  count: number;
+  Total_Sold: number;
 }
 
 const Leaderboard: React.FC = () => {
@@ -33,7 +33,7 @@ const Leaderboard: React.FC = () => {
     try {
       // Fetch top-selling products using an RPC call
       const { data: orderData, error: orderError } = await supabase.rpc(
-        "get_top_selling_products"
+        "top_selling_products"
       );
 
       if (orderError) {
@@ -48,7 +48,7 @@ const Leaderboard: React.FC = () => {
       // Loop through the orderData array to fetch details for each product
       for (const order of orderData) {
         const Product_ID = order.product_id;
-        const quantitySold = order.count; // Assuming this is in your orderData
+        const quantitySold = order.total_sold; // Assuming this is in your orderData
 
         // Fetch necessary columns including Product_Image for each Product_ID
         const { data: productData, error: productError } = await supabase
@@ -69,7 +69,7 @@ const Leaderboard: React.FC = () => {
           // Assuming productData is an array with a single product
           const productWithQuantity = {
             ...productData[0], // Get the first product's details
-            count: quantitySold, // Add the quantity sold to the product data
+            Total_Sold: quantitySold, // Add the quantity sold to the product data
           };
           allProductData.push(productWithQuantity);
         }
@@ -107,7 +107,7 @@ const Leaderboard: React.FC = () => {
   }, [supabase]);
 
   const navigateBack = () => {
-    router.back();
+    router.push("../../../");
   };
 
   return (
@@ -139,33 +139,24 @@ const Leaderboard: React.FC = () => {
       </header>
 
       {/* Tab Selector */}
-      <div className="flex justify-center space-x-4 mb-10">
+      <div className="flex justify-center mt-8 mx-7">
         <Tabs
-          key="light"
-          variant="light"
           size="lg"
-          aria-label="Tabs variants"
-          radius="lg"
+          aria-label="Tabs sizes"
           fullWidth
-          className="text-white hover:text-gray-300 focus:text-gray-300"
+          className="font-DB_Med"
+          defaultSelectedKey={"Food"}
         >
-          <Tab
-            key="photos"
-            title="เมนูขายดี"
-            className="text-white hover:text-gray-300 focus:text-gray-300"
-          />
-          <Tab
-            key="music"
-            title="เมนูที่ไม่ค่อยมีใครสั่ง"
-            className="text-white hover:text-gray-300 focus:text-gray-300"
-          />
+          <Tab key="Order" title="รายการคำสั่งซื้อ" href="./" />
+          <Tab key="Food" title="สินค้าขายดี" href="" />
+          <Tab key="Customer" title="ลูกค้าดีเด่น" href="./Userpage" />
         </Tabs>
       </div>
 
       {/* Podium with Best-Selling Items */}
-      <div className="relative">
+      <div className="relative mt-10">
         <div className="flex justify-center items-end space-x-10 z-0">
-          {products.length > 2 ? (
+          {products.length > 0 ? (
             <>
               {/* Second Place */}
               <motion.div
@@ -187,7 +178,8 @@ const Leaderboard: React.FC = () => {
                     {products[1].Product_Name}
                   </p>
                   <p className="text-sm font-DB_Med text-gray-200">
-                    ขายได้ {products[1].count} ชิ้น{" "}
+                    ขายได้ {products[1].Total_Sold ? products[1].Total_Sold : 0}{" "}
+                    ครั้ง{" "}
                   </p>
                 </div>
                 <div className="text-[4rem] font-DB_Med text-gray-500">2</div>
@@ -217,7 +209,8 @@ const Leaderboard: React.FC = () => {
                     {products[0].Product_Name}
                   </p>
                   <p className="text-sm font-DB_Med text-gray-200">
-                    ขายได้ {products[1].count} ชิ้น{" "}
+                    ขายได้ {products[0].Total_Sold ? products[0].Total_Sold : 0}{" "}
+                    ครั้ง{" "}
                   </p>
                 </div>
                 <div className="text-[4rem] font-DB_Med text-yellow-400">1</div>
@@ -244,7 +237,8 @@ const Leaderboard: React.FC = () => {
                     {products[2].Product_Name}
                   </p>
                   <p className="text-sm font-DB_Med text-gray-200">
-                    ขายได้ {products[1].count} ชิ้น{" "}
+                    ขายได้ {products[2].Total_Sold ? products[2].Total_Sold : 0}{" "}
+                    ครั้ง{" "}
                   </p>
                 </div>
                 <div className="text-[4rem] font-DB_Med text-brown-400">3</div>
@@ -265,7 +259,9 @@ const Leaderboard: React.FC = () => {
             >
               <div className="flex items-center">
                 {/* แสดงเลขลำดับอันดับ */}
-                <span className="font-DB_Med text-lg text-gray-500 mr-2">{index + 4}</span>{" "}
+                <span className="font-DB_Med text-lg text-gray-500 mr-2">
+                  {index + 4}
+                </span>{" "}
                 {/* index + 4 เพราะเราเริ่มจากอันดับ 4 */}
                 <div className="h-10 w-10 rounded-full shadow-md ml-2">
                   <img
@@ -278,7 +274,9 @@ const Leaderboard: React.FC = () => {
                 <p className="ml-4 font-DB_v4">{item.Product_Name}</p>
               </div>
               {/* แสดงยอดขายไว้ที่หลังสุด */}
-              <p className="text-gray-500 font-DB_v4">ขายได้ {item.count} ชิ้น</p>
+              <p className="text-gray-500 font-DB_v4">
+                ขายได้ {item.Total_Sold ? item.Total_Sold : 0} ครั้ง
+              </p>
             </div>
           ))}
         </div>

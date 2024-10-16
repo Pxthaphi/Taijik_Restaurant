@@ -14,17 +14,19 @@ import { supabase } from "@/lib/supabase";
 
 interface ModalCancelOrderProps {
   setIsModalOpen: (isOpen: boolean) => void;
-  orderId: string; // Receive orderId prop
+  orderId: string; // รับ orderId เป็น prop
+  fetchOrderData: () => void; // รับฟังก์ชัน fetchOrderData เพื่ออัปเดตข้อมูลในหน้าหลัก
 }
 
 export default function ModalCancelOrder({
   setIsModalOpen,
   orderId,
+  fetchOrderData, // เพิ่ม fetchOrderData เพื่อดึงข้อมูลใหม่หลังจากยกเลิกเสร็จ
 }: ModalCancelOrderProps) {
   const [orderDetail, setOrderDetail] = useState("");
 
   const handleConfirmCancel = async () => {
-    if(!orderDetail){
+    if (!orderDetail) {
       Swal.fire({
         icon: "error",
         title: "ผิดพลาด",
@@ -32,7 +34,8 @@ export default function ModalCancelOrder({
       });
       return;
     }
-    setIsModalOpen(false); // Close the modal
+
+    setIsModalOpen(false); // ปิด modal
     Swal.fire({
       title: "ต้องการที่จะยกเลิก??",
       text: "ถ้าหากยกเลิกสินค้าแล้ว จะไม่สามารถย้อนกลับได้อีก",
@@ -44,7 +47,7 @@ export default function ModalCancelOrder({
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          const { data, error } = await supabase
+          const { error } = await supabase
             .from("orders")
             .update({ Order_Status: 5, Order_Detail: orderDetail })
             .eq("Order_ID", orderId);
@@ -53,7 +56,7 @@ export default function ModalCancelOrder({
             throw error;
           }
 
-          // Delete the entry from the queue table
+          // ลบข้อมูลจากตาราง queue
           const { error: queueError } = await supabase
             .from("queue")
             .delete()
@@ -70,6 +73,9 @@ export default function ModalCancelOrder({
             showConfirmButton: false,
             timer: 1000,
           });
+
+          // ดึงข้อมูลออเดอร์ใหม่
+          fetchOrderData(); // เรียก fetchOrderData เพื่อนำข้อมูลใหม่ไปแสดง
         } catch (error) {
           console.log("Error cancelling order:", error);
           Swal.fire({

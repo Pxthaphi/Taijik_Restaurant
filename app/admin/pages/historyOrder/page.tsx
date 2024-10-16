@@ -1,10 +1,12 @@
 "use client";
-import Chart_Circle from "./components/charts_circle";
-import Chart_Row from "./components/charts_row";
 import Chart_Price from "./components/chart_price";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import OrderComponent from "./components/order";
+import Link from "next/link";
+import {Tabs, Tab} from "@nextui-org/react";
+
 
 export default function History() {
   const router = useRouter();
@@ -54,7 +56,7 @@ export default function History() {
   }, []); // Empty dependency array ensures this runs once on component mount
 
   const navigateBack = () => {
-    router.back();
+    router.push("../");
   };
   return (
     <div className="">
@@ -83,27 +85,38 @@ export default function History() {
             สรุปผลรายการคำสั่งซื้อ
           </div>
         </div>
+
+        <div className="flex justify-center mt-8 mx-7">
+          <Tabs size="lg" aria-label="Tabs sizes" fullWidth className="font-DB_Med" defaultSelectedKey={"Order"}>
+            <Tab key="Order" title="รายการคำสั่งซื้อ" href=""/>
+            <Tab key="Food" title="สินค้าขายดี" href="historyOrder/leaderpage"/>
+            <Tab key="Customer" title="ลูกค้าดีเด่น" href="historyOrder/Userpage" />
+          </Tabs>
+        </div>
+
         <section className="grid grid-cols-2 gap-3 mt-8 px-4 mx-3">
-          <div className="flex items-center justify-between p-2 bg-white rounded-xl shadow-md h-[5rem]">
-            <div className="ml-2 me-4">
-              <div className="text-xs text-gray-500">จำนวนลูกค้าทั้งหมด</div>
-              <div className="text-lg font-semibold">{totalCustomers}</div>
+          <Link href="historyOrder/Userlist">
+            <div className="flex items-center justify-between p-2 bg-white rounded-xl shadow-md h-[5rem]">
+              <div className="ml-2 me-4">
+                <div className="text-xs text-gray-500">จำนวนลูกค้าทั้งหมด</div>
+                <div className="text-lg font-semibold">{totalCustomers}</div>
+              </div>
+              <div className="p-2 bg-indigo-100 rounded-full">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="1em"
+                  height="1em"
+                  viewBox="0 0 32 32"
+                  className="w-6 h-6 text-indigo-500"
+                >
+                  <path
+                    fill="currentColor"
+                    d="M6 30h20v-5a7.01 7.01 0 0 0-7-7h-6a7.01 7.01 0 0 0-7 7zM9 9a7 7 0 1 0 7-7a7 7 0 0 0-7 7"
+                  />
+                </svg>
+              </div>
             </div>
-            <div className="p-2 bg-indigo-100 rounded-full">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="1em"
-                height="1em"
-                viewBox="0 0 32 32"
-                className="w-6 h-6 text-indigo-500"
-              >
-                <path
-                  fill="currentColor"
-                  d="M6 30h20v-5a7.01 7.01 0 0 0-7-7h-6a7.01 7.01 0 0 0-7 7zM9 9a7 7 0 1 0 7-7a7 7 0 0 0-7 7"
-                />
-              </svg>
-            </div>
-          </div>
+          </Link>
 
           <div className="flex items-center justify-between p-2 bg-white rounded-xl shadow-md h-[5rem]">
             <div className="ml-2 me-4">
@@ -183,9 +196,27 @@ export default function History() {
         <div className="px-4">
           <Chart_Price />
         </div>
-        {/* <div className="px-8 mt-5">
-          <Chart_Circle />
+
+        <div className="px-4">
+          <h2 className="text-2xl font-DB_Med mb-5 mt-5">รายการคำสั่งซื้อ</h2>
+
+          {/* Display orders with status 'completed' */}
+          <h2 className="text-lg font-DB_Med mt-4">สถานะเสร็จสิ้น</h2>
+          <OrderComponent status="completed" />
+
+          {/* Display orders with status 'pending' */}
+          <h2 className="text-lg font-DB_Med mt-4">สถานะรอดำเนินการ</h2>
+          <OrderComponent status="pending" />
+
+          {/* Display orders with status 'in_progress' */}
+          <h2 className="text-lg font-DB_Med mt-4">สถานะกำลังดำเนินการ</h2>
+          <OrderComponent status="in_progress" />
+
+          {/* Display orders with status 'cancelled' */}
+          <h2 className="text-lg font-DB_Med mt-4">สถานะยกเลิกคำสั่งซื้อ</h2>
+          <OrderComponent status="cancelled" />
         </div>
+        {/* 
         <div className="px-8 mt-5">
           <Chart_Row />
         </div> */}

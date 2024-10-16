@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, FC } from "react";
 import {
   Bar,
   BarChart,
@@ -10,6 +10,8 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  Rectangle,
+  RectangleProps,
 } from "recharts";
 import { supabase } from "@/lib/supabase";
 
@@ -32,6 +34,7 @@ import {
 interface Orders {
   Order_ID: string;
   Order_Datetime: string;
+  Promotion_ID: number | null; // Add Promotion_ID
 }
 
 interface OrderProducts {
@@ -39,139 +42,170 @@ interface OrderProducts {
   Total_Price: number;
 }
 
-// Define the types
+interface Promotions {
+  Promotion_ID: number;
+  Promotion_Discount: number;
+}
+
 type SalesByDayOrMonth = { [key: string]: number };
 type ChartData = { label: string; sales: number; trend: number }[];
 
-// Helper to create default sales data for days
+// Initialize sales data by day or month
 const initializeSalesByDay = (): SalesByDayOrMonth => ({
-  จันทร์: 0,
-  อังคาร: 0,
-  พุธ: 0,
-  พฤหัสบดี: 0,
-  ศุกร์: 0,
-  เสาร์: 0,
-  อาทิตย์: 0,
+  จ: 0,
+  อ: 0,
+  พ: 0,
+  พฤ: 0,
+  ศ: 0,
+  ส: 0,
+  อา: 0,
 });
 
-// Helper to create default sales data for months
+const initializeSalesByWeek = (): SalesByDayOrMonth => ({
+  "สัปดาห์ที่ 1": 0,
+  "สัปดาห์ที่ 2": 0,
+  "สัปดาห์ที่ 3": 0,
+  "สัปดาห์ที่ 4": 0,
+});
+
 const initializeSalesByMonth = (): SalesByDayOrMonth => ({
-  มกราคม: 0,
-  กุมภาพันธ์: 0,
-  มีนาคม: 0,
-  เมษายน: 0,
-  พฤษภาคม: 0,
-  มิถุนายน: 0,
-  กรกฎาคม: 0,
-  สิงหาคม: 0,
-  กันยายน: 0,
-  ตุลาคม: 0,
-  พฤศจิกายน: 0,
-  ธันวาคม: 0,
+  "ม.ค.": 0,
+  "ก.พ.": 0,
+  "มี.ค.": 0,
+  "เม.ย.": 0,
+  "พ.ค.": 0,
+  "มิ.ย.": 0,
+  "ก.ค.": 0,
+  "ส.ค.": 0,
+  "ก.ย.": 0,
+  "ต.ค.": 0,
+  "พ.ย.": 0,
+  "ธ.ค.": 0,
 });
 
-const chartConfig = {
-  sales: {
-    label: "ยอดขาย",
-    color: "#4EA926", // Green color for bars
-  },
-  trend: {
-    label: "Trend",
-    color: "#FFB800", // Yellow color for the trend line
-  },
+// Parse date to day
+const parseDateTimeToDay = (dateString: string): string => {
+  const [datePart] = dateString.split(" ");
+  const [day, month, year] = datePart.split("/").map(Number);
+  const adjustedYear = year > 2500 ? year - 543 : year;
+  const dateObj = new Date(adjustedYear, month - 1, day);
+  return getDayName(dateObj.getDay());
 };
 
-// Get the day names in Thai
+// Parse date to month
+const parseDateTimeToMonth = (dateString: string): string => {
+  const [datePart] = dateString.split(" ");
+  const [day, month, year] = datePart.split("/").map(Number);
+  const adjustedYear = year > 2500 ? year - 543 : year;
+  const dateObj = new Date(adjustedYear, month - 1, day);
+  return getMonthName(dateObj.getMonth());
+};
+
+// Parse date to week of the month, ensuring correct calculation of the week
+const parseDateTimeToWeek = (dateString: string): string => {
+  const [datePart] = dateString.split(" ");
+  const [day, month, year] = datePart.split("/").map(Number);
+  const adjustedYear = year > 2500 ? year - 543 : year;
+  const dateObj = new Date(adjustedYear, month - 1, day);
+
+  const firstDayOfMonth = new Date(
+    dateObj.getFullYear(),
+    dateObj.getMonth(),
+    1
+  );
+
+  const dayOfWeek = firstDayOfMonth.getDay();
+  const diffFromFirstDay = dateObj.getDate() + dayOfWeek - 1;
+  const weekNumber = Math.floor(diffFromFirstDay / 7) + 1;
+
+  return `สัปดาห์ที่ ${weekNumber}`;
+};
+
+// Get abbreviated day name in Thai
 const getDayName = (dayNumber: number): string => {
-  const daysInThai = [
-    "อาทิตย์",
-    "จันทร์",
-    "อังคาร",
-    "พุธ",
-    "พฤหัสบดี",
-    "ศุกร์",
-    "เสาร์",
-  ];
+  const daysInThai = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
   return daysInThai[dayNumber];
 };
 
-// Get the month names in Thai
+// Get abbreviated month name in Thai
 const getMonthName = (monthNumber: number): string => {
   const monthsInThai = [
-    "มกราคม",
-    "กุมภาพันธ์",
-    "มีนาคม",
-    "เมษายน",
-    "พฤษภาคม",
-    "มิถุนายน",
-    "กรกฎาคม",
-    "สิงหาคม",
-    "กันยายน",
-    "ตุลาคม",
-    "พฤศจิกายน",
-    "ธันวาคม",
+    "ม.ค.",
+    "ก.พ.",
+    "มี.ค.",
+    "เม.ย.",
+    "พ.ค.",
+    "มิ.ย.",
+    "ก.ค.",
+    "ส.ค.",
+    "ก.ย.",
+    "ต.ค.",
+    "พ.ย.",
+    "ธ.ค.",
   ];
   return monthsInThai[monthNumber];
 };
 
-// Parse the date and convert from Buddhist calendar to Gregorian for day
-const parseDateTimeToDay = (dateString: string): string => {
-  const [datePart] = dateString.split(" ");
-  const [day, month, year] = datePart.split("/").map(Number);
+// Custom Bar component with typed props
+interface CustomBarProps extends RectangleProps {
+  sales: number;
+}
 
-  // Convert Buddhist year to Gregorian year
-  const adjustedYear = year > 2500 ? year - 543 : year;
-
-  const dateObj = new Date(adjustedYear, month - 1, day);
-
-  // Return the day name in Thai
-  return getDayName(dateObj.getDay());
+const CustomBar: FC<CustomBarProps> = ({ x, y, width, height, sales }) => {
+  const barColorClass =
+    sales === 0
+      ? "fill-red-500"
+      : sales < 1000
+      ? "fill-yellow-500"
+      : "fill-green-500";
+  return (
+    <Rectangle
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      className={barColorClass}
+      radius={[10, 10, 0, 0]}
+    />
+  );
 };
 
-// Parse the date and convert to month for monthly aggregation
-const parseDateTimeToMonth = (dateString: string): string => {
-  const [datePart] = dateString.split(" "); // แยกส่วนวันที่จากเวลา
-  const [month, year] = datePart.split("/").map(Number);
-
-  // Convert Buddhist year to Gregorian year
-  const adjustedYear = year > 2500 ? year - 543 : year;
-
-  console.log("Original Date:", dateString); // แสดงข้อมูลวันที่ต้นฉบับ
-  console.log("Parsed Month:", getMonthName(month - 1)); // แสดงเดือนที่แปลงแล้ว
-
-  // Return the month name in Thai
-  return getMonthName(month - 1); // ใช้เดือนจาก index 0
-};
-
+// Main chart component
 export function Chart_Price() {
   const [chartData, setChartData] = useState<ChartData>([]);
-  const [totalPrice, setTotalPrice] = useState<number>(0); // State for storing total price
+  const [totalPrice, setTotalPrice] = useState<number>(0);
   const [timeRange, setTimeRange] = useState("7d");
 
-  // Fetch data and filter based on the time range (weekly or monthly)
+  // Filter and process data for the chart
   const getFilteredData = (
     orders: Orders[],
     orderProducts: OrderProducts[],
+    promotions: Promotions[], // Add promotions parameter
     timeRange: string
   ) => {
     const now = new Date();
     let cutoffDate = new Date();
-    const salesByDay = initializeSalesByDay();
-    const salesByMonth = initializeSalesByMonth();
-
+    let salesByPeriod: SalesByDayOrMonth = initializeSalesByDay();
+    let totalSales = 0;
     let isMonthly = false;
-    if (timeRange === "365d") {
+
+    if (timeRange === "7d") {
+      cutoffDate.setDate(now.getDate() - 7);
+    } else if (timeRange === "30d") {
+      salesByPeriod = initializeSalesByWeek();
+      cutoffDate.setDate(1);
+    } else if (timeRange === "365d") {
       isMonthly = true;
-      cutoffDate = new Date(now.getFullYear(), 0, 1); // Start of the year
-    } else {
-      cutoffDate.setDate(now.getDate() - 7); // Last 7 days
+      salesByPeriod = initializeSalesByMonth();
+      cutoffDate.setFullYear(now.getFullYear() - 1);
     }
 
     const filteredOrders = orders.filter((order) => {
-      const orderDate = new Date(order.Order_Datetime);
-      return isMonthly
-        ? orderDate.getFullYear() === now.getFullYear()
-        : orderDate >= cutoffDate;
+      const [datePart] = order.Order_Datetime.split(" ");
+      const [day, month, year] = datePart.split("/").map(Number);
+      const adjustedYear = year > 2500 ? year - 543 : year;
+      const orderDate = new Date(adjustedYear, month - 1, day);
+      return orderDate >= cutoffDate;
     });
 
     filteredOrders.forEach((order) => {
@@ -179,32 +213,38 @@ export function Chart_Price() {
         .filter((prod) => prod.Order_ID === order.Order_ID)
         .reduce((sum, prod) => sum + prod.Total_Price, 0);
 
-      if (isMonthly) {
+      // Find the promotion, or leave it empty if Promotion_ID is null or not found
+      const promotion = order.Promotion_ID
+        ? promotions.find((promo) => promo.Promotion_ID === order.Promotion_ID)
+        : null;
+
+      // Apply discount if a promotion exists, otherwise the discount is 0
+      const discount = promotion ? promotion.Promotion_Discount : 0;
+      const finalOrderPrice = totalOrderPrice - discount;
+
+      totalSales += finalOrderPrice;
+
+      if (timeRange === "30d") {
+        const orderWeek = parseDateTimeToWeek(order.Order_Datetime);
+        salesByPeriod[orderWeek] += finalOrderPrice;
+      } else if (isMonthly) {
         const orderMonth = parseDateTimeToMonth(order.Order_Datetime);
-
-        console.log("Order Month:", orderMonth); // แสดงเดือนที่ดึงมาได้
-        console.log("Total Price for this order:", totalOrderPrice); // แสดงยอดขายของคำสั่งซื้อนั้นๆ
-
-        salesByMonth[orderMonth] += totalOrderPrice;
+        salesByPeriod[orderMonth] += finalOrderPrice;
       } else {
         const orderDay = parseDateTimeToDay(order.Order_Datetime);
-        salesByDay[orderDay] += totalOrderPrice;
+        salesByPeriod[orderDay] += finalOrderPrice;
       }
     });
 
-    const formattedChartData: ChartData = isMonthly
-      ? Object.keys(salesByMonth)
-          .filter((month) => salesByMonth[month] > 0) // Show only months with sales
-          .map((month) => ({
-            label: month,
-            sales: salesByMonth[month],
-            trend: Math.random() * 500, // Placeholder for trend
-          }))
-      : Object.keys(salesByDay).map((day) => ({
-          label: day,
-          sales: salesByDay[day],
-          trend: Math.random() * 500, // Placeholder for trend
-        }));
+    setTotalPrice(totalSales);
+
+    const formattedChartData: ChartData = Object.keys(salesByPeriod).map(
+      (period) => ({
+        label: period,
+        sales: salesByPeriod[period],
+        trend: Math.random() * 500,
+      })
+    );
 
     return formattedChartData;
   };
@@ -213,32 +253,32 @@ export function Chart_Price() {
     async function fetchSalesData() {
       const { data: orders, error: ordersError } = await supabase
         .from("orders")
-        .select("Order_ID, Order_Datetime");
+        .select("Order_ID, Order_Datetime, Promotion_ID")
+        .eq("Order_Status", 4);
 
       const { data: orderProducts, error: orderProductsError } = await supabase
         .from("order_products")
         .select("Order_ID, Total_Price");
 
-      console.table(orders); // ตรวจสอบว่ามีข้อมูลคำสั่งซื้อหรือไม่
-      console.table(orderProducts); // ตรวจสอบว่ามีข้อมูลสินค้าในคำสั่งซื้อหรือไม่
+      const { data: promotions, error: promotionsError } = await supabase
+        .from("promotions")
+        .select("Promotion_ID, Promotion_Discount");
 
-      if (ordersError || orderProductsError) {
+      if (ordersError || orderProductsError || promotionsError) {
         console.error(
           "Error fetching data:",
-          ordersError || orderProductsError
+          ordersError || orderProductsError || promotionsError
         );
         return;
       }
 
-      // Sum up the total price from all order products
-      const totalPriceSum = orderProducts.reduce(
-        (sum, prod) => sum + prod.Total_Price,
-        0
+      const filteredData = getFilteredData(
+        orders,
+        orderProducts,
+        promotions,
+        timeRange
       );
-      setTotalPrice(totalPriceSum); // Set the total price
-
-      const filteredData = getFilteredData(orders, orderProducts, timeRange);
-      setChartData(filteredData); // Set the filtered chart data
+      setChartData(filteredData);
     }
 
     fetchSalesData();
@@ -262,37 +302,42 @@ export function Chart_Price() {
               <SelectItem value="7d" className="rounded-lg font-DB_Med">
                 รายวัน
               </SelectItem>
+              <SelectItem value="30d" className="rounded-lg font-DB_Med">
+                ย้อนหลัง 1 เดือน (สัปดาห์)
+              </SelectItem>
               <SelectItem value="365d" className="rounded-lg font-DB_Med">
-                รายเดือน
+                ย้อนหลัง 1 ปี (เดือน)
               </SelectItem>
             </SelectContent>
           </Select>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="text-4xl font-DB_Med text-green-700">฿{totalPrice}</div>
-        <ResponsiveContainer width="100%" height={200} className="mt-8">
+        <div className="text-4xl font-DB_Med text-green-700 mb-5">฿{totalPrice}</div>
+        <ResponsiveContainer width="100%" height={300} className="">
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis
               dataKey="label"
               tickLine={false}
-              tickMargin={10}
+              tickMargin={5}
               axisLine={false}
+              angle={0}
+              style={{ fontSize: "14px" }}
             />
-            <YAxis hide={true} />
             <Tooltip cursor={false} />
             <Bar
               dataKey="sales"
-              fill={chartConfig.sales.color}
-              radius={[10, 10, 0, 0]}
+              shape={(props: any) => (
+                <CustomBar {...props} sales={props.payload.sales} />
+              )}
             />
             <Line
               type="monotone"
               dataKey="trend"
-              stroke={chartConfig.trend.color}
+              stroke="#FFB800"
               strokeWidth={2.5}
-              dot={{ stroke: chartConfig.trend.color, strokeWidth: 2 }}
+              dot={{ stroke: "#FFB800", strokeWidth: 2 }}
               activeDot={{ r: 6 }}
             />
           </BarChart>

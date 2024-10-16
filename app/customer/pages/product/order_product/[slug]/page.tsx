@@ -29,10 +29,11 @@ interface OrderProduct {
   Product_Name: string;
   Product_Qty: number;
   Product_Size: string;
-  Product_Meat: number;
-  Product_Option: number;
-  Product_Noodles: number;
+  Product_Meat: number[];
+  Product_Option: number[];
+  Product_Noodles: number[];
   Product_Detail: string;
+  Promotion_ID: number;
   Total_Price: number;
   Meat_Name?: string;
   Option_Name?: string;
@@ -83,109 +84,136 @@ export default function Order_Status({ params }: PageProps) {
 
   useEffect(() => {
     const fetchOrderDetails = async () => {
-      setLoading(true);
+      try {
+        setLoading(true);
 
-      // Fetch all promotions
-      const { data: allPromotions, error: promoError } = await supabase
-        .from("promotions")
-        .select(
-          "Promotion_ID, Promotion_Name, Promotion_Detail, Promotion_Discount, Promotion_Timestart, Promotion_Timestop, Promotion_Status"
-        );
+        const { data: orderData, error: orderError } = await supabase
+          .from("orders")
+          .select("Order_Status, Promotion_ID")
+          .eq("Order_ID", params.slug)
+          .single();
 
-      if (promoError) {
-        console.error("Error fetching promotions:", promoError);
-        setLoading(false);
-        return;
-      }
+        if (orderError) throw orderError;
 
-      // Fetch order details including status and promotion ID
-      const { data: orderData, error: orderError } = await supabase
-        .from("orders")
-        .select("Order_Status, Promotion_ID")
-        .eq("Order_ID", params.slug)
-        .single();
+        let promotionData = null;
 
-      if (orderError) {
-        console.error(orderError);
-        setLoading(false);
-        return;
-      }
+        // Only query the promotions table if Promotion_ID is not null
+        if (orderData.Promotion_ID) {
+          const { data: promoData, error: promoError } = await supabase
+            .from("promotions")
+            .select("*")
+            .eq("Promotion_ID", orderData.Promotion_ID)
+            .single();
 
-      setStatusOrder(orderData.Order_Status);
-
-      // Find matching promotion
-      const promotionForOrder = allPromotions.find(
-        (promo) => promo.Promotion_ID === orderData.Promotion_ID
-      );
-
-      // Fetch order products details
-      const { data: orderProductsData, error: orderProductsError } =
-        await supabase
-          .from("order_products")
-          .select("*")
-          .eq("Order_ID", params.slug);
-
-      if (orderProductsError) {
-        console.error(orderProductsError);
-        setLoading(false);
-        return;
-      }
-
-      const productIds = orderProductsData.map((product) => product.Product_ID);
-
-      // Fetch product names
-      const { data: productsData, error: productsError } = await supabase
-        .from("products")
-        .select("*")
-        .in("Product_ID", productIds);
-
-      if (productsError) {
-        console.error(productsError);
-        setLoading(false);
-        return;
-      }
-
-      // Map product names and details to order products
-      const enhancedOrderProducts = orderProductsData.map((product) => {
-        const productInfo = productsData.find(
-          (p) => p.Product_ID === product.Product_ID
-        );
-
-        return {
-          ...product,
-          Product_Name: productInfo
-            ? productInfo.Product_Name
-            : "Unknown Product",
-        };
-      });
-
-      setOrderProducts(enhancedOrderProducts);
-
-      // Calculate the total price
-      const calculatedTotalPrice = orderProductsData.reduce(
-        (acc, product) => acc + product.Total_Price,
-        0
-      );
-
-      setTotalPrice(calculatedTotalPrice);
-
-      // Calculate discount
-      let appliedDiscount = 0;
-      if (
-        promotionForOrder &&
-        promotionForOrder.Promotion_Status === 1
-      ) {
-        const now = new Date();
-        const start = new Date(promotionForOrder.Promotion_Timestart);
-        const stop = new Date(promotionForOrder.Promotion_Timestop);
-
-        if (now >= start && now <= stop) {
-          appliedDiscount = promotionForOrder.Promotion_Discount;
+          if (promoError) throw promoError;
+          promotionData = promoData;
         }
-      }
 
-      setDiscount(appliedDiscount);
-      setLoading(false);
+        const { data: orderProductsData, error: orderProductsError } =
+          await supabase
+            .from("order_products")
+            .select("*")
+            .eq("Order_ID", params.slug);
+
+        if (orderProductsError) throw orderProductsError;
+
+        // Continue processing order products and related data (meats, options, noodles)...
+        const productIds = orderProductsData.map(
+          (product) => product.Product_ID
+        );
+        const meatIDs = orderProductsData.flatMap(
+          (item) => item.Product_Meat || []
+        );
+        const optionIDs = orderProductsData.flatMap(
+          (item) => item.Product_Option || []
+        );
+        const noodleIDs = orderProductsData.flatMap(
+          (item) => item.Product_Noodles || []
+        );
+
+        const { data: productsData, error: productsError } = await supabase
+          .from("products")
+          .select("Product_ID, Product_Name")
+          .in("Product_ID", productIds);
+
+        if (productsError) throw productsError;
+
+        const { data: meatsData, error: meatsError } = await supabase
+          .from("product_meat")
+          .select("*")
+          .in("Meat_ID", meatIDs);
+
+        if (meatsError) throw meatsError;
+
+        const { data: optionsData, error: optionsError } = await supabase
+          .from("product_option")
+          .select("*")
+          .in("Option_ID", optionIDs);
+
+        if (optionsError) throw optionsError;
+
+        const { data: noodlesData, error: noodlesError } = await supabase
+          .from("noodles_type")
+          .select("*")
+          .in("Noodles_ID", noodleIDs);
+
+        if (noodlesError) throw noodlesError;
+
+        const enhancedOrderProducts = orderProductsData.map((product) => {
+          const productInfo = productsData.find(
+            (p) => p.Product_ID === product.Product_ID
+          );
+
+          const meatData = (product.Product_Meat || [])
+            .map((meatId: number) => {
+              const meat = meatsData.find((meat) => meat.Meat_ID === meatId);
+              return meat?.Meat_Name || "";
+            })
+            .join(", ");
+
+          const optionNames = (product.Product_Option || [])
+            .map((optionId: number) => {
+              const option = optionsData.find(
+                (option) => option.Option_ID === optionId
+              );
+              return option?.Option_Name || "";
+            })
+            .join(", ");
+
+          const noodleNames = (product.Product_Noodles || [])
+            .map((noodleId: number) => {
+              const noodle = noodlesData.find(
+                (noodle) => noodle.Noodles_ID === noodleId
+              );
+              return noodle?.Noodles_Name || "";
+            })
+            .join(", ");
+
+          return {
+            ...product,
+            Product_Name: productInfo?.Product_Name || "",
+            Meat_Name: meatData,
+            Option_Name: optionNames,
+            Noodles_Name: noodleNames,
+          };
+        });
+
+        setOrderProducts(enhancedOrderProducts);
+
+        const calculatedTotalPrice = orderProductsData.reduce(
+          (acc, product) => acc + product.Total_Price,
+          0
+        );
+        setTotalPrice(calculatedTotalPrice);
+
+        // Assuming you want to calculate discount based on promotionData
+        setDiscount(promotionData?.Promotion_Discount || 0);
+
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching order details:", error);
+        setLoading(false);
+      }
     };
 
     fetchOrderDetails();
@@ -347,7 +375,7 @@ export default function Order_Status({ params }: PageProps) {
         </div>
       </header>
 
-      <main>
+      <main className="mb-10">
         <section className="mx-6 mt-6">
           <h1 className={`text-2xl font-DB_Med ${Status_textcolor}`}>
             {Status_text}
@@ -430,16 +458,14 @@ export default function Order_Status({ params }: PageProps) {
         <section className="mx-6 mt-5">
           <div className="flex justify-between mt-5 my-5">
             <div className="text-xl text-gray-800 font-DB_Med">ส่วนลด</div>
-            <div className="text-xl text-red-600 font-DB_Med">
-              ฿{(discount)}
-            </div>
+            <div className="text-xl text-red-600 font-DB_Med">-฿{discount}</div>
           </div>
           <div className="flex justify-between mt-3">
             <div className="text-xl text-gray-800 font-DB_Med">
               ราคารวมสุทธิ
             </div>
             <div className="text-xl text-green-600 font-DB_Med">
-              ฿{(totalPrice - discount)}
+              ฿{totalPrice - discount}
             </div>
           </div>
         </section>

@@ -69,6 +69,12 @@ interface MergedProduct extends OrderProduct {
   Noodles_Names: string[]; // Add a field to store noodle type names
 }
 
+interface Promotion {
+  Promotion_ID: number;
+  Promotion_Name: string;
+  Promotion_Discount: number;
+}
+
 const statusNames = {
   1: "รอการยืนยัน",
   2: "กำลังดำเนินการ",
@@ -92,6 +98,7 @@ export default function ListOrder_Status({ params }: PageProps) {
   const [cancelOrderId, setCancelOrderId] = useState<string>("");
   const [userID, setuserID] = useState<string>("");
   const [telephone, setTelephone] = useState<string>("");
+  const [promotion, setPromotion] = useState<Promotion | null>(null); // เพิ่ม state สำหรับโปรโมชั่น
 
   let Status_text = "";
   let Status_detail = "";
@@ -156,6 +163,21 @@ export default function ListOrder_Status({ params }: PageProps) {
     deleteQueueEntry();
   }, [orderStatus]);
 
+  // ดึงข้อมูลโปรโมชั่น
+  const fetchPromotion = async (promotionID: number) => {
+    const { data, error } = await supabase
+      .from("promotions")
+      .select("Promotion_ID, Promotion_Name, Promotion_Discount")
+      .eq("Promotion_ID", promotionID)
+      .single();
+
+    if (error) {
+      console.error("Error fetching promotion:", error);
+    } else {
+      setPromotion(data); // เก็บข้อมูลโปรโมชั่นใน state
+    }
+  };
+
   useEffect(() => {
     const fetchOrderData = async () => {
       try {
@@ -168,6 +190,10 @@ export default function ListOrder_Status({ params }: PageProps) {
         if (orderError) throw orderError;
 
         const typedOrderData = orderData as Order;
+
+        if (typedOrderData.Promotion_ID) {
+          await fetchPromotion(typedOrderData.Promotion_ID); // ดึงข้อมูลโปรโมชั่นถ้ามี
+        }
 
         const { data: userData, error: userError } = await supabase
           .from("users")
@@ -317,10 +343,26 @@ export default function ListOrder_Status({ params }: PageProps) {
     };
   }, [params.slug]);
 
+  const fetchOrderData = async () => {
+    try {
+      const { data: orderData, error } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("Order_ID", params.slug)
+        .single();
+
+      if (error) throw error;
+      setOrder(orderData);
+    } catch (error) {
+      console.error("Error fetching order:", error);
+    }
+  };
+
   const openModalCancel = (orderId: string) => {
     setCancelOrderId(orderId);
     setIsModalOpen(true);
   };
+
   const handleChangeStatus = async () => {
     Swal.fire({
       title: "ต้องการที่จะเปลี่ยนสถานะ??",
@@ -384,11 +426,23 @@ export default function ListOrder_Status({ params }: PageProps) {
     sendNotification();
   }, [orderStatus, lastNotifiedStatus]);
 
+  // ฟังก์ชันคำนวณส่วนลดจากโปรโมชั่น
+  const calculateDiscount = () => {
+    return promotion ? promotion.Promotion_Discount : 0;
+  };
+
+  // ฟังก์ชันคำนวณราคาสุทธิหลังหักส่วนลด
   const calculateTotalPrice = () => {
-    return products.reduce((total, product) => {
+    let totalPrice = products.reduce((acc, product) => {
       const quantity = quantityMap[product.Product_ID] || 0;
-      return total + product.Total_Price * quantity;
+      return acc + product.Total_Price * quantity;
     }, 0);
+
+    // หักส่วนลด
+    const discount = calculateDiscount();
+    totalPrice -= discount;
+
+    return totalPrice > 0 ? totalPrice : 0;
   };
 
   const navigateBack = () => {
@@ -421,14 +475,22 @@ export default function ListOrder_Status({ params }: PageProps) {
 
     // สร้างรายการอาหาร
     const orderItems = products.map((product) => {
-      const quantity = quantityMap[product.Product_ID]; // ค่าเริ่มต้นเป็น 1 ถ้าจำนวนไม่ระบุ
-      const meatText = product.Meat_Names ? ` (${product.Meat_Names})` : "";
-      const optionsText = product.Option_Names
-        ? ` (เพิ่ม ${product.Option_Names})`
-        : "";
-      const noodlesText = product.Noodles_Names
-        ? ` (เส้น: ${product.Noodles_Names.join(", ")})`
-        : ""; // Add noodles information
+      const quantity = quantityMap[product.Product_ID] || 1;
+
+      // ตรวจสอบและสร้างข้อความถ้ามีข้อมูล
+      const meatText =
+        product.Meat_Names.length > 0
+          ? ` (${product.Meat_Names.join(", ")})`
+          : "";
+      const optionsText =
+        product.Option_Names.length > 0
+          ? ` (เพิ่ม ${product.Option_Names.join(", ")})`
+          : "";
+      const noodlesText =
+        product.Noodles_Names.length > 0
+          ? ` (เส้น ${product.Noodles_Names.join(", ")})`
+          : "";
+      const size = product.Product_Size;
 
       return {
         type: "box",
@@ -436,7 +498,7 @@ export default function ListOrder_Status({ params }: PageProps) {
         contents: [
           {
             type: "text",
-            text: `${product.Product_Name} ${meatText} ${optionsText} ${noodlesText} x ${quantity}`,
+            text: `${product.Product_Name}${noodlesText} ${meatText} ${size} ${optionsText} x ${quantity}`,
             flex: 0,
             size: "sm",
           },
@@ -452,12 +514,8 @@ export default function ListOrder_Status({ params }: PageProps) {
     });
 
     // คำนวณส่วนลดและราคาสุทธิ
-    const discount = 0; // สมมุติส่วนลดเป็น 0
-    const totalPrice = products.reduce((sum, product) => {
-      const quantity = quantityMap[product.Product_ID] || 1;
-      return sum + product.Total_Price * quantity;
-    }, 0);
-    const finalPrice = totalPrice - discount;
+    const totalPrice = calculateTotalPrice(); // ใช้ฟังก์ชันที่คำนวณราคาหลังส่วนลด
+    const discount = calculateDiscount(); // คำนวณส่วนลด
 
     // Flex Message ข้อความ
     const message = [
@@ -603,7 +661,7 @@ export default function ListOrder_Status({ params }: PageProps) {
                       },
                       {
                         type: "text",
-                        text: `฿${finalPrice}`,
+                        text: `฿${totalPrice}`,
                         offsetEnd: "5px",
                         align: "end",
                         color: "#269117",
@@ -737,7 +795,7 @@ export default function ListOrder_Status({ params }: PageProps) {
           </div>
         </header>
 
-        <section className="mt-6 mx-8">
+        <section className="mt-8 mx-8">
           <div className="flex justify-between item-center">
             <p className="text-lg font-DB_Med">รหัสคำสั่งซื้อ</p>
             <p className="text-lg font-DB_Med">{params.slug}</p>
@@ -751,29 +809,33 @@ export default function ListOrder_Status({ params }: PageProps) {
               </p>
             </div>
           </div>
-          <div className="flex item-center mt-5">
-            <p className="text-lg font-DB_Med me-[5.2rem]">ชื่อผู้สั่ง</p>
-            <div className="flex justify-center items-center me-[1.5rem]">
-              <Avatar src={userPicture} className="w-7 h-7 me-2" />
+          <div className="flex justify-between item-center mt-5">
+            <p className="text-lg font-DB_Med mr-[4rem]">ชื่อผู้สั่ง</p>
+            <div className="flex justify-center items-center -mr-2 me-[1.5rem]">
+              <Avatar src={userPicture} className="w-7 h-7 me-1" />
               <p className="text-lg font-DB_Med">{userName}</p>
             </div>
             <Link
               href={`tel:${telephone}`}
-              className="flex justify-center items-center"
+              className="flex items-center justify-start bg-green-100 rounded-full w-fit p-1"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="1em"
-                height="1em"
-                viewBox="0 0 24 24"
-                className="w-7 h-7 text-white rounded-2xl bg-green-500 px-1 py-1 me-1"
-              >
-                <path
-                  fill="currentColor"
-                  d="M5 9.86a18.47 18.47 0 0 0 9.566 9.292l.68.303a3.5 3.5 0 0 0 4.33-1.247l.889-1.324a1 1 0 0 0-.203-1.335l-3.012-2.43a1 1 0 0 0-1.431.183l-.932 1.257a12.14 12.14 0 0 1-5.51-5.511l1.256-.932a1 1 0 0 0 .183-1.431l-2.43-3.012a1 1 0 0 0-1.335-.203l-1.333.894a3.5 3.5 0 0 0-1.237 4.355z"
-                />
-              </svg>
-              <p className="text-sm font-DB_v4 pt-1">โทรเลย</p>
+              <div className="flex items-center bg-green-600 rounded-full p-1">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="1.2em"
+                  height="1.2em"
+                  viewBox="0 0 24 24"
+                  className="w-4 h-4 text-white pt-0.5"
+                >
+                  <path
+                    fill="currentColor"
+                    d="m16.556 12.906l-.455.453s-1.083 1.076-4.038-1.862s-1.872-4.014-1.872-4.014l.286-.286c.707-.702.774-1.83.157-2.654L9.374 2.86C8.61 1.84 7.135 1.705 6.26 2.575l-1.57 1.56c-.433.432-.723.99-.688 1.61c.09 1.587.808 5 4.812 8.982c4.247 4.222 8.232 4.39 9.861 4.238c.516-.048.964-.31 1.325-.67l1.42-1.412c.96-.953.69-2.588-.538-3.255l-1.91-1.039c-.806-.437-1.787-.309-2.417.317"
+                  ></path>
+                </svg>
+              </div>
+              <p className="text-[14px] font-DB_Med text-green-600 ml-1 mr-1">
+                ติดต่อลูกค้า
+              </p>
             </Link>
           </div>
         </section>
@@ -791,23 +853,28 @@ export default function ListOrder_Status({ params }: PageProps) {
                     alt={product.Product_Name}
                   />
                 </div>
-                <div className="w-1/2 ms-4 pt-1">
-                  <h3 className="text-lg font-DB_Med text-gray-700">
-                    {product.Product_Name} ({product.Meat_Names.join(", ")})
+                <div className="w-1/2 ms-6 pt-1">
+                  <h3 className="text-lg font-DB_Med text-gray-700 flex flex-wrap">
+                    {product.Product_Name}
                   </h3>
+                  <span className="text-sm font-DB_Med flex flex-wrap items-center mt-1 space-x-2">
+                    {product.Noodles_Names.length > 0 && (
+                      <p>{product.Noodles_Names}</p>
+                    )}
+                    {product.Meat_Names.length > 0 && (
+                      <p>({product.Meat_Names})</p>
+                    )}
+                    {product.Product_Size && <p>{product.Product_Size}</p>}
+                  </span>
+
                   {product.Option_Names.length > 0 && (
-                    <p className="text-sm text-gray-500 font-DB_v4">
-                      ตัวเลือกเพิ่มเติม: {product.Option_Names.join(", ")}
+                    <p className="text-sm text-gray-500 font-DB_v4 mt-2">
+                      ตัวเลือกเพิ่มเติม: {product.Option_Names}
                     </p>
                   )}
-                  {product.Noodles_Names.length > 0 && (
+                  {product.Product_Detail.length > 0 && (
                     <p className="text-sm text-gray-500 font-DB_v4">
-                      ชนิดเส้น: {product.Noodles_Names.join(", ")}
-                    </p>
-                  )}
-                  {product.Product_Detail != "" && (
-                    <p className="text-sm text-gray-500 font-DB_v4">
-                      รายละเอียดเพิ่มเติม : {product.Product_Detail}
+                      รายละเอียดเพิ่มเติม: {product.Product_Detail}
                     </p>
                   )}
                   <div className="flex justify-between gap-x-6">
@@ -831,10 +898,11 @@ export default function ListOrder_Status({ params }: PageProps) {
                 {product.Product_Name}{" "}
                 {product.Noodles_Names.length > 0 &&
                   product.Noodles_Names.join(", ")}{" "}
-                ({product.Meat_Names.join(", ")}) (เพิ่ม{" "}
+                {product.Meat_Names.length > 0 && product.Meat_Names.join(", ")}
                 {product.Option_Names.length > 0 &&
                   product.Option_Names.join(", ")}{" "}
-                x {quantityMap[product.Product_ID]}
+                {product.Product_Size.length > 0 && product.Product_Size} x{" "}
+                {quantityMap[product.Product_ID]}
               </div>
               <div className="text-base text-gray-800 font-DB_Med">
                 ฿{product.Total_Price * (quantityMap[product.Product_ID] || 0)}
@@ -844,7 +912,9 @@ export default function ListOrder_Status({ params }: PageProps) {
           ))}
           <div className="flex justify-between mt-3">
             <div className="text-base text-gray-800 font-DB_Med">ส่วนลด</div>
-            <div className="text-base text-gray-800 font-DB_Med">฿0</div>
+            <div className="text-base text-red-600 font-DB_Med">
+              -฿{calculateDiscount()}.00
+            </div>{" "}
           </div>
 
           <hr className="h-px my-2 bg-gray-100 border-0 mt-3 pt-1 rounded-full"></hr>
@@ -874,6 +944,7 @@ export default function ListOrder_Status({ params }: PageProps) {
           <Modal_CancelOrder
             setIsModalOpen={setIsModalOpen}
             orderId={cancelOrderId}
+            fetchOrderData={fetchOrderData} // ส่งฟังก์ชัน fetchOrderData เข้าไปใน Modal
           />
         )}
       </main>
