@@ -6,6 +6,8 @@ import { Card, Progress } from "@nextui-org/react";
 import { Button } from "@nextui-org/react";
 import { FaStar } from "react-icons/fa"; // Using react-icons for star icons
 import { supabase } from "@/lib/supabase";
+import Loading from "../../../components/loading";
+
 
 interface Review {
   Review_ID: number;
@@ -130,7 +132,7 @@ export default function Review() {
 
   // Loading and error handling
   if (loading) {
-    return <p>Loading reviews...</p>;
+    return <Loading />;
   }
 
   if (error) {
