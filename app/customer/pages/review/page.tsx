@@ -8,7 +8,6 @@ import { FaStar } from "react-icons/fa"; // Using react-icons for star icons
 import { supabase } from "@/lib/supabase";
 import Loading from "../../../components/loading";
 
-
 interface Review {
   Review_ID: number;
   Product_Name: string;
@@ -28,11 +27,16 @@ export default function Review() {
     loading: true,
     error: null as string | null,
   });
-  const [rating, setRating] = useState<number | null>(null); // ค่า rating ที่เลือก
-  const [hover, setHover] = useState<number | null>(null); // ค่า hover ขณะชี้ที่ดาว
+  const [rating, setRating] = useState<number | null>(null); // Selected rating value
+  const [hover, setHover] = useState<number | null>(null); // Hover value for stars
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // States for calculating ratings
+  const [averageRating, setAverageRating] = useState<number>(0);
+  const [ratingCounts, setRatingCounts] = useState<number[]>([0, 0, 0, 0, 0]); // Count for 1-5 stars
+  const [selectedRating, setSelectedRating] = useState<number | null>(null);
 
   // Fetch reviews from Supabase
   useEffect(() => {
@@ -44,14 +48,7 @@ export default function Review() {
       const { data, error } = await supabase
         .from("reviews")
         .select(
-          `
-            Review_ID,
-            Review_Detail,
-            Review_Star,
-            Review_Time,
-            products!inner ( Product_Name ),
-            users!inner ( User_Name, User_Picture )
-        `
+          `Review_ID, Review_Detail, Review_Star, Review_Time, products!inner ( Product_Name ), users!inner ( User_Name, User_Picture )`
         )
         .order("Review_Time", { ascending: false });
 
@@ -67,12 +64,15 @@ export default function Review() {
           Review_Detail: review.Review_Detail,
           Review_Star: review.Review_Star,
           Review_Time: review.Review_Time,
-          Product_Name: review.products?.Product_Name || "Unknown Product", // Directly access the product name
-          User_Name: review.users?.User_Name || "Unknown User", // Directly access the user name
-          User_Picture: review.users?.User_Picture || "", // Directly access the user picture
+          Product_Name: review.products?.Product_Name || "Unknown Product",
+          User_Name: review.users?.User_Name || "Unknown User",
+          User_Picture: review.users?.User_Picture || "",
         }));
 
         setReviews(formattedData);
+
+        // Calculate average rating and rating counts
+        calculateRatings(formattedData);
       }
 
       setLoading(false);
@@ -81,9 +81,34 @@ export default function Review() {
     fetchReviews();
   }, []);
 
-  // Function for rating selection
+  const calculateRatings = (reviews: Review[]) => {
+    if (reviews.length === 0) {
+      setAverageRating(0);
+      setRatingCounts([0, 0, 0, 0, 0]); // Reset counts for 1-5 stars
+      return;
+    }
+
+    let totalStars = 0;
+    const counts = [0, 0, 0, 0, 0]; // for 1-5 stars
+
+    reviews.forEach((review) => {
+      if (review.Review_Star >= 1 && review.Review_Star <= 5) {
+        totalStars += review.Review_Star;
+        counts[review.Review_Star - 1] += 1; // Increment count for the corresponding star
+      }
+    });
+
+    const avgRating = totalStars / reviews.length;
+    setAverageRating(avgRating);
+    setRatingCounts(counts);
+  };
+
   const handleRatingClick = (star: number) => {
-    setRating(rating === star ? null : star);
+    if (selectedRating === star) {
+      setSelectedRating(null); // ยกเลิกการเลือกหากคลิกซ้ำ
+    } else {
+      setSelectedRating(star); // อัปเดตค่าดาวที่เลือก
+    }
   };
 
   const handleTabChange = (key: any) => {
@@ -292,65 +317,39 @@ export default function Review() {
                     </h1>
                   </div>
                   <div className="flex items-center mt-1">
-                    <span className="text-[4rem] font-DB_Med">4.8</span>
+                    <span className="text-[4rem] font-DB_Med">
+                      {averageRating.toFixed(1)}
+                    </span>
                     <span className="text-lg text-gray-500 ml-3 font-DB_Med mt-8">
-                      จาก 297 เรตติ้ง
+                      จาก {reviews.length} เรตติ้ง
                     </span>
                   </div>
                   <div className="space-y-4 mt-4">
-                    <div className="flex items-center">
-                      <span className="text-yellow-500 mr-[1rem]">
-                        ⭐⭐⭐⭐⭐
-                      </span>
-                      <Progress value={(267 / 297) * 100} color="success" />
-                      <span className="ml-[0.9rem] font-DB_Med">267</span>
-                    </div>
-                    <div className="flex items-center">
-                      <span className="text-yellow-500 mr-[2.4rem]">
-                        ⭐⭐⭐⭐
-                      </span>
-                      <Progress value={(11 / 297) * 100} color="success" />
-                      <span className="ml-[1.3rem] font-DB_Med">11</span>
-                    </div>
-                    <div className="flex items-center">
-                      <span className="text-yellow-500 mr-[3.8rem]">
-                        ⭐⭐⭐
-                      </span>
-                      <Progress value={(5 / 297) * 100} color="success" />
-                      <span className="ml-7 font-DB_Med">5</span>
-                    </div>
-                    <div className="flex items-center">
-                      <span className="text-yellow-500 mr-[5.1rem]">⭐⭐</span>
-                      <Progress value={(6 / 297) * 100} color="warning" />
-                      <span className="ml-7 font-DB_Med">6</span>
-                    </div>
-                    <div className="flex items-center">
-                      <span className="text-yellow-500 mr-[6.5rem]">⭐</span>
-                      <Progress value={(8 / 297) * 100} color="danger" />
-                      <span className="ml-7 font-DB_Med">8</span>
-                    </div>
+                    {[5, 4, 3, 2, 1].map((star, index) => (
+                      <div className="flex items-center" key={index}>
+                        {/* Display correct number of stars */}
+                        <span className="text-yellow-500 mr-[1rem]">
+                          {`⭐`.repeat(star)}
+                        </span>
+                        {/* Progress bar showing percentage of reviews for each star level */}
+                        <Progress
+                          value={ratingCounts[star - 1] * reviews.length}
+                          color={
+                            star === 1
+                              ? "danger"
+                              : star === 2
+                              ? "warning"
+                              : "success"
+                          }
+                        />
+                        {/* Display count of reviews for each star level */}
+                        <span className="ml-[0.9rem] font-DB_Med">
+                          {ratingCounts[star - 1]}
+                        </span>{" "}
+                        {/* ใช้ star-1 เพื่อดึงค่าที่ถูกต้อง */}
+                      </div>
+                    ))}
                   </div>
-
-                  {/* <div className="grid grid-cols-2 gap-4 mt-4">
-                    <div className="bg-gray-100 rounded-full p-2 text-center text-xs font-DB_Med">
-                      คุณภาพอาหารดี 93
-                    </div>
-                    <div className="bg-gray-100 rounded-full p-2 text-center text-xs font-DB_Med">
-                      ถูกสุขลักษณะ 76
-                    </div>
-                    <div className="bg-gray-100 rounded-full p-2 text-center text-xs font-DB_Med">
-                      บรรจุภัณฑ์เหมาะสม 97
-                    </div>
-                    <div className="bg-gray-100 rounded-full p-2 text-center text-xs font-DB_Med">
-                      ปริมาณคุ้มค่า 78
-                    </div>
-                    <div className="bg-gray-100 rounded-full p-2 text-center text-xs font-DB_Med">
-                      รสชาติถูกปาก 85
-                    </div>
-                    <div className="bg-gray-100 rounded-full p-2 text-center text-xs font-DB_Med">
-                      ออเดอร์ถูกต้อง 81
-                    </div>
-                  </div> */}
                 </Card>
               </div>
               <div className="flex flex-col justify-center items-center space-y-4 py-5">
@@ -381,80 +380,94 @@ export default function Review() {
                   ))}
                 </div>
               </div>
-              {reviews.map((review) => (
-                <div key={review.Review_ID} className="mt-3 my-5">
-                  <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-full text-gray-600">
-                    <div className="flex justify-between items-center space-x-4">
-                      <div className="flex">
-                        {/* Avatar Section */}
-                        {review.User_Picture ? (
-                          <img
-                            className="w-12 h-12 rounded-full"
-                            src={review.User_Picture}
-                            alt={review.User_Name}
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-gray-200" />
-                        )}
-                        <div className="items-start ml-3">
-                          <h4 className="text-lg font-semibold font-DB_Med">
-                            {review.User_Name || "Unknown User"}
-                          </h4>
-                          <p className="text-sm text-gray-400 font-DB_Med">
-                            {new Date(review.Review_Time).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="ml-auto">
-                        {/* Star Rating Section */}
-                        <div className="flex items-center">
-                          {[...Array(5)].map((_, i) => (
-                            <FaStar
-                              key={i}
-                              className={
-                                i < review.Review_Star
-                                  ? "text-yellow-400 text-xl"
-                                  : "text-gray-400 text-xl"
-                              }
+              {reviews
+                .filter((review) => {
+                  if (selectedRating === null) return true; // ถ้าไม่ได้เลือกดาว ให้แสดงทั้งหมด
+                  return review.Review_Star === selectedRating; // ถ้าเลือกดาว ให้แสดงเฉพาะรีวิวที่มีดาวตรงกับที่เลือก
+                })
+                .map((review) => (
+                  <div key={review.Review_ID} className="mt-3 my-5">
+                    <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-full text-gray-600">
+                      <div className="flex justify-between items-center space-x-4">
+                        <div className="flex">
+                          {/* Avatar Section */}
+                          {review.User_Picture ? (
+                            <img
+                              className="w-12 h-12 rounded-full"
+                              src={review.User_Picture}
+                              alt={review.User_Name}
                             />
-                          ))}
+                          ) : (
+                            <div className="w-12 h-12 rounded-full bg-gray-200" />
+                          )}
+                          <div className="items-start ml-3">
+                            <h4 className="text-lg font-semibold font-DB_Med">
+                              {review.User_Name || "Unknown User"}
+                            </h4>
+                            <p className="text-sm text-gray-400 font-DB_Med">
+                              {new Date(review.Review_Time).toLocaleDateString(
+                                "th-TH",
+                                {
+                                  year: "numeric",
+                                  month: "long", // หรือ "2-digit" สำหรับเดือนแบบตัวเลข
+                                  day: "2-digit",
+                                }
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="ml-auto">
+                          {/* Star Rating Section */}
+                          <div className="flex items-center">
+                            {[...Array(5)].map((_, i) => (
+                              <FaStar
+                                key={i}
+                                className={
+                                  i < review.Review_Star
+                                    ? "text-yellow-400 text-xl"
+                                    : "text-gray-400 text-xl"
+                                }
+                              />
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    {/* Review Content */}
-                    <div className="mt-4">
-                      {review.Product_Name ? (
-                        <div className="flex items-center justify-start bg-green-100 rounded-full mt-3 p-1 w-fit">
-                          <div className="flex items-center bg-green-600 rounded-full p-1">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="1em"
-                              height="1em"
-                              viewBox="0 0 20 20"
-                              className="w-4 h-4 text-white"
-                            >
-                              <path
-                                fill="currentColor"
-                                d="M4.505 2h-.013a.5.5 0 0 0-.176.036a.5.5 0 0 0-.31.388C3.99 2.518 3.5 5.595 3.5 7c0 .95.442 1.797 1.13 2.345c.25.201.37.419.37.601v.5q0 .027-.003.054c-.027.26-.151 1.429-.268 2.631C4.614 14.316 4.5 15.581 4.5 16a2 2 0 1 0 4 0c0-.42-.114-1.684-.229-2.869a302 302 0 0 0-.268-2.63L8 10.446v-.5c0-.183.12-.4.37-.601A3 3 0 0 0 9.5 7c0-1.408-.493-4.499-.506-4.577a.5.5 0 0 0-.355-.403A.5.5 0 0 0 8.51 2h-.02h.001a.505.505 0 0 0-.501.505v4a.495.495 0 0 1-.99.021V2.5a.5.5 0 0 0-1 0v4l.001.032a.495.495 0 0 1-.99-.027V2.506A.506.506 0 0 0 4.506 2M11 6.5A4.5 4.5 0 0 1 15.5 2a.5.5 0 0 1 .5.5v6.978l.02.224a626 626 0 0 1 .228 2.696c.124 1.507.252 3.161.252 3.602a2 2 0 1 1-4 0c0-.44.128-2.095.252-3.602c.062-.761.125-1.497.172-2.042l.03-.356H12.5A1.5 1.5 0 0 1 11 8.5zM8.495 2h-.004z"
-                              ></path>
-                            </svg>
+                      {/* Review Content */}
+                      <div className="mt-4">
+                        {review.Product_Name ? (
+                          <div className="flex items-center justify-start bg-green-100 rounded-full mt-3 p-1 w-fit">
+                            <div className="flex items-center bg-green-600 rounded-full p-1">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="1em"
+                                height="1em"
+                                viewBox="0 0 20 20"
+                                className="w-4 h-4 text-white"
+                              >
+                                <path
+                                  fill="currentColor"
+                                  d="M4.505 2h-.013a.5.5 0 0 0-.176.036a.5.5 0 0 0-.31.388C3.99 2.518 3.5 5.595 3.5 7c0 .95.442 1.797 1.13 2.345c.25.201.37.419.37.601v.5q0 .027-.003.054c-.027.26-.151 1.429-.268 2.631C4.614 14.316 4.5 15.581 4.5 16a2 2 0 1 0 4 0c0-.42-.114-1.684-.229-2.869a302 302 0 0 0-.268-2.63L8 10.446v-.5c0-.183.12-.4.37-.601A3 3 0 0 0 9.5 7c0-1.408-.493-4.499-.506-4.577a.5.5 0 0 0-.355-.403A.5.5 0 0 0 8.51 2h-.02h.001a.505.505 0 0 0-.501.505v4a.495.495 0 0 1-.99.021V2.5a.5.5 0 0 0-1 0v4l.001.032a.495.495 0 0 1-.99-.027V2.506A.506.506 0 0 0 4.506 2M11 6.5A4.5 4.5 0 0 1 15.5 2a.5.5 0 0 1 .5.5v6.978l.02.224a626 626 0 0 1 .228 2.696c.124 1.507.252 3.161.252 3.602a2 2 0 1 1-4 0c0-.44.128-2.095.252-3.602c.062-.761.125-1.497.172-2.042l.03-.356H12.5A1.5 1.5 0 0 1 11 8.5zM8.495 2h-.004z"
+                                ></path>
+                              </svg>
+                            </div>
+                            <p className="text-[15px] font-DB_Med text-green-600 ml-2 mr-2">
+                              <p className="font-DB_Med">
+                                {review.Product_Name}
+                              </p>
+                            </p>
                           </div>
-                          <p className="text-[15px] font-DB_Med text-green-600 ml-2 mr-2">
-                            <p className="font-DB_Med">{review.Product_Name}</p>
+                        ) : (
+                          <p className="text-sm text-gray-400 font-DB_Med">
+                            Unknown Product
                           </p>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-gray-400 font-DB_Med">
-                          Unknown Product
+                        )}
+                        <p className="text-gray-400 text-sm mt-2 font-DB_Med">
+                          {review.Review_Detail}
                         </p>
-                      )}
-                      <p className="text-gray-400 text-sm mt-2 font-DB_Med">
-                        {review.Review_Detail}
-                      </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </>
           )}
         </div>
