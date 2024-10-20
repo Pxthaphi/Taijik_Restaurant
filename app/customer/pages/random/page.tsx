@@ -43,8 +43,8 @@ export default function Random_Food() {
   const userID: string | null | undefined = getUserID();
   const [lastSelectedProduct, setLastSelectedProduct] =
     useState<Product | null>(null);
-  const [product, setProduct] = useState<Product | null>(null); // Add product state
-  const [historyProducts, setHistoryProducts] = useState<Product[]>([]); // State to store history products
+  const [product, setProduct] = useState<Product | null>(null); 
+  const [historyProducts, setHistoryProducts] = useState<Product[]>([]); 
 
   // Fetch product types from Supabase
   async function fetchTypeProducts() {

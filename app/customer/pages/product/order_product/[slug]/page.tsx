@@ -83,6 +83,12 @@ export default function Order_Status({ params }: PageProps) {
   }, [loading, statusOrder]);
 
   useEffect(() => {
+    if (statusOrder) {
+     
+    }
+  }, [loading, statusOrder]);
+
+  useEffect(() => {
     const fetchOrderDetails = async () => {
       try {
         setLoading(true);
@@ -94,6 +100,8 @@ export default function Order_Status({ params }: PageProps) {
           .single();
 
         if (orderError) throw orderError;
+
+        setStatusOrder(orderData.Order_Status);
 
         let promotionData = null;
 
