@@ -12,7 +12,7 @@ import { Toaster } from "@/components/ui/sonner"; // Import Toaster
 
 interface PageProps {
   params: {
-    slug: string;
+    slug: number;
   };
 }
 
@@ -48,6 +48,11 @@ interface FoodOption {
   Option_Price: number;
 }
 
+interface ReviewStats {
+  averageRating: number;
+  totalReviews: number;
+}
+
 export default function Product_Detail({ params }: PageProps) {
   const router = useRouter();
   const [isAnimation, setIsAnimation] = useState(false);
@@ -68,6 +73,10 @@ export default function Product_Detail({ params }: PageProps) {
   const [specialMeatSelected, setSpecialMeatSelected] = useState(false);
   const [typeName, setTypeName] = useState("");
   const [selectedNoodles, setSelectedNoodles] = useState<number[]>([]);
+  const [reviewStats, setReviewStats] = useState<ReviewStats>({
+    averageRating: 0,
+    totalReviews: 0,
+  });
 
   // Define state to hold the total price
   const [totalPrice, setTotalPrice] = useState<number>(0);
@@ -343,7 +352,85 @@ export default function Product_Detail({ params }: PageProps) {
 
   useEffect(() => {
     checkProductFavorite(); // Re-check favorite status whenever isAnimation changes
+    fetchReviewStats(params.slug); // Fetch review stats based on Product_ID
   }, [isAnimation]);
+
+  // Function to fetch review stats (average rating and total number of reviews)
+  async function fetchReviewStats(productId: number) {
+    try {
+      const { data, error } = await supabase
+        .from("reviews")
+        .select("Review_Star")
+        .eq("Product_ID", productId);
+
+      if (error) {
+        throw error;
+      }
+
+      const totalReviews = data.length;
+      const averageRating =
+        totalReviews > 0
+          ? data.reduce((sum, review) => sum + review.Review_Star, 0) /
+            totalReviews
+          : 0;
+
+      setReviewStats({ averageRating, totalReviews });
+    } catch (error) {
+      console.error(
+        "Error fetching review stats:",
+        (error as PostgrestError).message
+      );
+    }
+  }
+
+  // Function to render stars based on the average rating
+  const renderStars = (rating: number) => {
+    const fullStars = Math.floor(rating);
+    const halfStar = rating % 1 >= 0.5;
+    const stars = [];
+
+    for (let i = 0; i < 5; i++) {
+      if (i < fullStars) {
+        stars.push(
+          <svg
+            key={i}
+            className="w-4 h-4 text-yellow-400"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="currentColor"
+            viewBox="0 0 22 20"
+          >
+            <path d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z" />
+          </svg>
+        );
+      } else if (i === fullStars && halfStar) {
+        stars.push(
+          <svg
+            key={i}
+            className="w-4 h-4 text-yellow-400"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="currentColor"
+            viewBox="0 0 22 20"
+          >
+            <path d="M10.5 1.5l2.25 4.5 5 0.75-3.5 3.5 0.75 5-4.5-2.25-4.5 2.25 0.75-5-3.5-3.5 5-0.75 2.25-4.5z" />
+          </svg>
+        );
+      } else {
+        stars.push(
+          <svg
+            key={i}
+            className="w-4 h-4 text-gray-300"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="currentColor"
+            viewBox="0 0 22 20"
+          >
+            <path d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z" />
+          </svg>
+        );
+      }
+    }
+
+    return stars;
+  };
 
   useEffect(() => {
     if (selectedSize == 10) {
@@ -695,53 +782,8 @@ export default function Product_Detail({ params }: PageProps) {
               <div className="flex items-center justify-between mt-6">
                 <div className="pt-2">
                   <div className="font-DB_v4 text-sm">จำนวนดาว</div>
-
                   <div className="flex items-center pt-1">
-                    <svg
-                      className="w-4 h-4 text-yellow-400"
-                      aria-hidden="true"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="currentColor"
-                      viewBox="0 0 22 20"
-                    >
-                      <path d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z" />
-                    </svg>
-                    <svg
-                      className="w-4 h-4 ms-1 text-yellow-400"
-                      aria-hidden="true"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="currentColor"
-                      viewBox="0 0 22 20"
-                    >
-                      <path d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z" />
-                    </svg>
-                    <svg
-                      className="w-4 h-4 ms-1 text-yellow-400"
-                      aria-hidden="true"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="currentColor"
-                      viewBox="0 0 22 20"
-                    >
-                      <path d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z" />
-                    </svg>
-                    <svg
-                      className="w-4 h-4 ms-1 text-yellow-400"
-                      aria-hidden="true"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="currentColor"
-                      viewBox="0 0 22 20"
-                    >
-                      <path d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z" />
-                    </svg>
-                    <svg
-                      className="w-4 h-4 ms-1 text-gray-300 dark:text-gray-500"
-                      aria-hidden="true"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="currentColor"
-                      viewBox="0 0 22 20"
-                    >
-                      <path d="M20.924 7.625a1.523 1.523 0 0 0-1.238-1.044l-5.051-.734-2.259-4.577a1.534 1.534 0 0 0-2.752 0L7.365 5.847l-5.051.734A1.535 1.535 0 0 0 1.463 9.2l3.656 3.563-.863 5.031a1.532 1.532 0 0 0 2.226 1.616L11 17.033l4.518 2.375a1.534 1.534 0 0 0 2.226-1.617l-.863-5.03L20.537 9.2a1.523 1.523 0 0 0 .387-1.575Z" />
-                    </svg>
+                    {renderStars(reviewStats.averageRating)}
                   </div>
                 </div>
                 <div className="pt-2">
@@ -750,7 +792,7 @@ export default function Product_Detail({ params }: PageProps) {
                     href={`../review`}
                     className="text-sm font-DB_v4 text-gray-700 underline hover:no-underline"
                   >
-                    73 review
+                    {reviewStats.totalReviews} รีวิว
                   </Link>
                 </div>
                 <div className="pt-2">
