@@ -161,33 +161,20 @@ export default function PickerWithButtonField(
     fetchRestaurantTimes(); // Fetch times when the modal is opened
   }, []);
 
-  // Minimum selectable time: Either the opening time or the current time, whichever is later
-  const MinTime = openTime ? openTime : undefined;
-  const MaxTime = closeTime ? closeTime : undefined;
+  const MinTime =
+    openTime && currentTime.isAfter(openTime) ? currentTime : openTime;
+  const MaxTime = closeTime || undefined;
 
   const handleChange = (newValue: Dayjs | null) => {
-    if (!newValue) return; // Ensure newValue is not null
+    if (!newValue) return;
 
-    // Convert the selected value to the 'Asia/Bangkok' timezone for comparison
     const newValueInTimezone = newValue.tz(THAI_TIMEZONE);
-
-    // Log the times for debugging
     console.log("Selected Time:", newValueInTimezone?.format("HH:mm"));
-    console.log("MinTime:", MinTime?.format("HH:mm"));
-    console.log("MaxTime:", MaxTime?.format("HH:mm"));
 
-    // Handle cross-midnight case
-    if (MaxTime && MaxTime.isBefore(MinTime)) {
-      // If the max time is technically after midnight, shift it forward by one day
-      MaxTime.add(1, "day");
-    }
-
-    // Compare only time portion (ignoring date)
     const minTimeInTimezone = MinTime?.format("HH:mm");
     const maxTimeInTimezone = MaxTime?.format("HH:mm");
     const selectedTime = newValueInTimezone?.format("HH:mm");
 
-    // Check if the selected time is within the allowed range (HH:mm)
     if (
       (minTimeInTimezone && selectedTime && selectedTime < minTimeInTimezone) ||
       (maxTimeInTimezone && selectedTime && selectedTime > maxTimeInTimezone)
@@ -196,7 +183,6 @@ export default function PickerWithButtonField(
       return;
     }
 
-    // Update the value state
     setValue(newValueInTimezone);
     props.onChange(newValueInTimezone);
   };
